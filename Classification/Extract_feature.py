@@ -8,8 +8,6 @@ from multiprocessing import Process, Queue
 import pandas as pd
 from tqdm import tqdm
 
-DEFAULT_DATA_ROOT = r'D:\code\pyradiomics\Classification\test_data'
-
 
 def list_kind_folders(data_root):
     """Return class names from sub-folder names under data_root."""
@@ -111,7 +109,7 @@ def extract_single_case_features_isolated(ori_path, lab_path, para_path, timeout
     return result.get('ok', False), result
 
 
-def extract_kind_features(kind, extractor, data_root=DEFAULT_DATA_ROOT, para_path='./CT-extractor.yaml',
+def extract_kind_features(kind, extractor, data_root="", para_path='./CT-extractor.yaml',
                           isolate_case=True):
     """Extract all cases for one class label (kind)."""
     kind_path = os.path.join(data_root, kind)
@@ -149,8 +147,7 @@ def extract_kind_features(kind, extractor, data_root=DEFAULT_DATA_ROOT, para_pat
     return pd.DataFrame(rows)
 
 
-def extract_and_save_all_kinds(kinds=None, para_path='./CT-extractor.yaml', data_root=DEFAULT_DATA_ROOT,
-                               isolate_case=True):
+def extract_and_save_all_kinds(data_root="", kinds=None, para_path='./CT-extractor.yaml'):
     """Run feature extraction for all kinds and save <kind>.csv."""
     check_runtime_dependencies()
 
@@ -172,4 +169,5 @@ def extract_and_save_all_kinds(kinds=None, para_path='./CT-extractor.yaml', data
 
 
 if __name__ == '__main__':
-    extract_and_save_all_kinds()
+    DEFAULT_DATA_ROOT = r'D:\code\pyradiomics\Classification\test_data'
+    extract_and_save_all_kinds(DEFAULT_DATA_ROOT)
