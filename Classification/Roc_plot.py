@@ -1,0 +1,53 @@
+# -- coding: utf-8 --
+import matplotlib.pyplot as plt
+#ROC曲线画图函数
+def DrawROC(fpr,tpr,roc_auc,title='ROC curve'):
+    plt.plot([0, 1], [0, 1], '--', color=(0.7, 0.7, 0.7))
+    plt.plot(fpr, tpr, 'k--',label='ROC (area = %0.2f)' % roc_auc, lw=2)
+    plt.xlim([0.00, 1.00])
+    plt.ylim([0.00, 1.00])
+    plt.xlabel('False Positive Rate', fontsize=13)
+    plt.ylabel('True Positive Rate', fontsize=13)
+    plt.title('%s'%title, fontsize=18)
+    plt.legend(loc='lower right')
+    plt.show()
+from sklearn.metrics import RocCurveDisplay, roc_curve, auc
+import numpy as np
+def Mean_roc_plot(ax,tprs,aucs,mean_fpr,figname):
+    ax.plot([0, 1], [0, 1], linestyle="--", lw=2, color="r", label="Chance", alpha=0.8)
+    mean_tpr = np.mean(tprs, axis=0)
+    mean_tpr[-1] = 1.0
+    # mean_auc = auc(mean_fpr, mean_tpr)
+    mean_auc= np.mean(aucs)
+    std_auc = np.std(aucs)
+    ax.plot(
+        mean_fpr,
+        mean_tpr,
+        color="b",
+        label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
+        lw=2,
+        alpha=0.8,
+    )
+
+    std_tpr = np.std(tprs, axis=0)
+    tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+    tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+    ax.fill_between(
+        mean_fpr,
+        tprs_lower,
+        tprs_upper,
+        color="grey",
+        alpha=0.2,
+        label=r"$\pm$ 1 std. dev.",
+    )
+
+    ax.set(
+        xlim=[-0.05, 1.05],
+        ylim=[-0.05, 1.05],
+        title=figname,
+    )
+    ax.legend(loc="lower right")
+    path="./Figure/"
+    plt.tight_layout()
+    plt.savefig(path+figname+'.png',dpi=600)
+    # plt.show()
