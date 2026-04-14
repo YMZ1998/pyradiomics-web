@@ -3,6 +3,7 @@ outputs/
 *.model
 *.csv
 *.txt
+*.nii.gz
 agModels-predictClass/
 
 

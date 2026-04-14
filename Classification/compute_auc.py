@@ -1,5 +1,5 @@
 from sklearn.metrics import precision_score, f1_score, recall_score, accuracy_score, \
-    classification_report, roc_auc_score, confusion_matrix, plot_confusion_matrix, plot_roc_curve
+    classification_report, roc_auc_score, confusion_matrix
 
 # MCN 1 SCN 0   51  56
 labels = ['SCN', 'MCN']
