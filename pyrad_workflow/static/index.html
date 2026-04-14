@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PyRadiomics Console</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">PyRadiomics Console</p>
+          <h1 class="page-title">Radiomics Workflow Console</h1>
+          <p class="page-copy">Use a dedicated workspace for each step in the imaging workflow, from validation through model training.</p>
+        </div>
+        <nav class="topnav">
+          <a class="topnav-link is-active" href="/">Home</a>
+          <a class="topnav-link" href="/validate">Validate</a>
+          <a class="topnav-link" href="/extract">Extract</a>
+          <a class="topnav-link" href="/select">Select</a>
+          <a class="topnav-link" href="/train">Train</a>
+          <a class="topnav-link" href="/full">Full Run</a>
+        </nav>
+      </header>
+
+      <section class="hero-card home-hero">
+        <div>
+          <p class="section-tag">Overview</p>
+          <h2>Step-Based Workspace</h2>
+          <p class="section-copy">
+            Each workflow stage has its own page with a focused form, a result area, and the related preview panel.
+            The layout is optimized for desktop screens and avoids mixing unrelated controls on one page.
+          </p>
+        </div>
+        <div class="hero-summary-list">
+          <div class="hero-summary-item">
+              <strong>Validation</strong>
+              <span>Review manifest structure, image geometry, and mask consistency.</span>
+          </div>
+          <div class="hero-summary-item">
+              <strong>Feature Extraction</strong>
+              <span>Generate radiomics features and inspect exported outputs.</span>
+          </div>
+          <div class="hero-summary-item">
+              <strong>Selection And Training</strong>
+              <span>Reduce the feature set and compare model performance in separate workspaces.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="home-grid">
+        <section class="card">
+          <div class="section-head">
+            <div>
+              <p class="section-tag">Workflow</p>
+              <h2>Select A Step</h2>
+            </div>
+          </div>
+          <div class="nav-grid">
+            <a class="nav-card" href="/validate">
+              <span class="nav-index">01</span>
+              <strong>Validate Input Data</strong>
+              <p>Check manifest completeness, geometry alignment, and mask validity.</p>
+            </a>
+            <a class="nav-card" href="/extract">
+              <span class="nav-index">02</span>
+              <strong>Extract Features</strong>
+              <p>Run radiomics extraction using the selected parameter file.</p>
+            </a>
+            <a class="nav-card" href="/select">
+              <span class="nav-index">03</span>
+              <strong>Select Features</strong>
+              <p>Filter low-value and redundant features before model training.</p>
+            </a>
+            <a class="nav-card" href="/train">
+              <span class="nav-index">04</span>
+              <strong>Train Models</strong>
+              <p>Review cross-validation metrics and compare candidate models.</p>
+            </a>
+            <a class="nav-card nav-card-wide" href="/full">
+              <span class="nav-index">All</span>
+              <strong>Run Full Pipeline</strong>
+              <p>Execute the full workflow from data validation through training.</p>
+            </a>
+          </div>
+        </section>
+
+        <aside class="card">
+          <div class="section-head">
+            <div>
+              <p class="section-tag">Guidance</p>
+              <h2>Recommended Sequence</h2>
+            </div>
+          </div>
+          <div class="step-list">
+            <div class="step-item">
+              <strong>1. Validate</strong>
+              <p>Confirm the dataset is structurally ready before running downstream analysis.</p>
+            </div>
+            <div class="step-item">
+              <strong>2. Extract</strong>
+              <p>Generate `features.csv` and use that output in the following steps.</p>
+            </div>
+            <div class="step-item">
+              <strong>3. Select</strong>
+              <p>Reduce the feature space and export `selected_features.csv`.</p>
+            </div>
+            <div class="step-item">
+              <strong>4. Train</strong>
+              <p>Evaluate model performance using the selected feature table.</p>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>

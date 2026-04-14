@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Run Full Pipeline</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Complete Workflow</p>
+          <h1 class="page-title">Run Full Pipeline</h1>
+          <p class="page-copy">Run the full workflow from validation through training in one controlled execution page.</p>
+        </div>
+        <nav class="topnav">
+          <a class="topnav-link" href="/">Home</a>
+          <a class="topnav-link" href="/validate">Validate</a>
+          <a class="topnav-link" href="/extract">Extract</a>
+          <a class="topnav-link" href="/select">Select</a>
+          <a class="topnav-link" href="/train">Train</a>
+          <a class="topnav-link is-active" href="/full">Full Run</a>
+        </nav>
+      </header>
+
+      <section class="notice hidden" id="status-box"></section>
+
+      <section class="desktop-grid">
+        <section class="content-column">
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <p class="section-tag">Configuration</p>
+                <h2>Full Pipeline Settings</h2>
+              </div>
+            </div>
+            <form data-endpoint="/api/full">
+              <div class="form-grid">
+                <label>Manifest CSV
+                  <input type="text" name="manifest" data-default="manifest">
+                </label>
+                <label>Radiomics Params
+                  <input type="text" name="params" data-default="params">
+                </label>
+                <label>Labels CSV
+                  <input type="text" name="labels" data-default="labels">
+                </label>
+                <label>Output Directory
+                  <input type="text" name="output_dir" data-default="pipeline_output_dir">
+                </label>
+                <label>Label Column
+                  <input type="text" name="label_column" data-default="label_column">
+                </label>
+                <label>Mask Label Value
+                  <input type="number" name="label_value" data-default="label_value">
+                </label>
+                <label>Geometry Tolerance
+                  <input type="text" name="tolerance" data-default="tolerance">
+                </label>
+                <label>Variance Threshold
+                  <input type="text" name="variance_threshold" data-default="variance_threshold">
+                </label>
+                <label>Correlation Threshold
+                  <input type="text" name="correlation_threshold" data-default="correlation_threshold">
+                </label>
+                <label>Top K Features
+                  <input type="number" name="top_k" data-default="top_k">
+                </label>
+                <label>CV Folds
+                  <input type="number" name="folds" data-default="folds">
+                </label>
+                <label>Random State
+                  <input type="number" name="random_state" data-default="random_state">
+                </label>
+              </div>
+              <div class="actions">
+                <button type="submit">Run Full Pipeline</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <p class="section-tag">Results</p>
+                <h2>Pipeline Output</h2>
+              </div>
+            </div>
+            <div id="result-cards" class="metric-grid"></div>
+            <div class="result-grid">
+              <div class="subcard">
+                <h3>Stage Summary</h3>
+                <div id="result-steps" class="steps"></div>
+              </div>
+              <div class="subcard">
+                <h3 id="chart-title">Visual Summary</h3>
+                <div id="result-chart" class="chart-panel empty-state">Run the full pipeline to see the overview chart.</div>
+              </div>
+            </div>
+            <div id="result-table" class="table-wrap hidden"></div>
+            <div id="result-files" class="file-list"></div>
+          </article>
+        </section>
+
+        <aside class="side-column">
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <p class="section-tag">Preview</p>
+                <h2>Dataset Inspector</h2>
+                <p class="section-copy">Review manifest and label information before starting the full workflow.</p>
+              </div>
+              <button type="button" data-refresh-preview="data">Refresh</button>
+            </div>
+            <div id="data-preview-cards" class="metric-grid compact-grid"></div>
+            <div id="data-label-groups" class="chip-grid"></div>
+            <div id="data-preview-table" class="table-wrap hidden"></div>
+          </article>
+        </aside>
+      </section>
+    </main>
+    <script src="/static/dashboard.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Train Models</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Workflow Step 4</p>
+          <h1 class="page-title">Train Models</h1>
+          <p class="page-copy">Run model training and compare evaluation metrics in a cleaner desktop-oriented layout.</p>
+        </div>
+        <nav class="topnav">
+          <a class="topnav-link" href="/">Home</a>
+          <a class="topnav-link" href="/validate">Validate</a>
+          <a class="topnav-link" href="/extract">Extract</a>
+          <a class="topnav-link" href="/select">Select</a>
+          <a class="topnav-link is-active" href="/train">Train</a>
+          <a class="topnav-link" href="/full">Full Run</a>
+        </nav>
+      </header>
+
+      <section class="notice hidden" id="status-box"></section>
+
+      <section class="desktop-grid">
+        <section class="content-column">
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <p class="section-tag">Configuration</p>
+                <h2>Training Settings</h2>
+              </div>
+            </div>
+            <form data-endpoint="/api/train">
+              <div class="form-grid">
+                <label>Features CSV
+                  <input type="text" name="features" data-default="selection_features_path" data-store-key="selected-features">
+                </label>
+                <label>Labels CSV
+                  <input type="text" name="labels" data-default="labels">
+                </label>
+                <label>Output Directory
+                  <input type="text" name="output_dir" data-default="training_output_dir">
+                </label>
+                <label>Label Column
+                  <input type="text" name="label_column" data-default="label_column">
+                </label>
+                <label>CV Folds
+                  <input type="number" name="folds" data-default="folds">
+                </label>
+                <label>Random State
+                  <input type="number" name="random_state" data-default="random_state">
+                </label>
+              </div>
+              <div class="actions">
+                <button type="submit">Train Models</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <p class="section-tag">Results</p>
+                <h2>Training Output</h2>
+              </div>
+            </div>
+            <div id="result-cards" class="metric-grid"></div>
+            <div class="result-grid">
+              <div class="subcard">
+                <h3>Model Summary</h3>
+                <div id="result-steps" class="steps"></div>
+              </div>
+              <div class="subcard">
+                <h3 id="chart-title">Visual Summary</h3>
+                <div id="result-chart" class="chart-panel empty-state">Run training to see the result chart.</div>
+              </div>
+            </div>
+            <div id="result-table" class="table-wrap hidden"></div>
+            <div id="result-files" class="file-list"></div>
+          </article>
+        </section>
+
+        <aside class="side-column">
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <p class="section-tag">Preview</p>
+                <h2>Feature Inspector</h2>
+                <p class="section-copy">Confirm the selected feature file before starting model comparison.</p>
+              </div>
+              <button type="button" data-refresh-preview="features">Refresh</button>
+            </div>
+            <div id="feature-preview-cards" class="metric-grid compact-grid"></div>
+            <div id="feature-group-list" class="group-list"></div>
+            <div id="feature-preview-table" class="table-wrap hidden"></div>
+          </article>
+        </aside>
+      </section>
+    </main>
+    <script src="/static/dashboard.js" defer></script>
+  </body>
+</html>

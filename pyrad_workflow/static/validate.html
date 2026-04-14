@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Validate Input Data</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Workflow Step 1</p>
+          <h1 class="page-title">Validate Input Data</h1>
+          <p class="page-copy">Review manifest structure, image geometry, and mask consistency before feature extraction.</p>
+        </div>
+        <nav class="topnav">
+          <a class="topnav-link" href="/">Home</a>
+          <a class="topnav-link is-active" href="/validate">Validate</a>
+          <a class="topnav-link" href="/extract">Extract</a>
+          <a class="topnav-link" href="/select">Select</a>
+          <a class="topnav-link" href="/train">Train</a>
+          <a class="topnav-link" href="/full">Full Run</a>
+        </nav>
+      </header>
+
+      <section class="notice hidden" id="status-box"></section>
+
+      <section class="desktop-grid">
+        <section class="content-column">
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <p class="section-tag">Configuration</p>
+                <h2>Validation Settings</h2>
+                <p class="section-copy">Run the validation stage independently and review the generated output files below.</p>
+              </div>
+            </div>
+            <form data-endpoint="/api/validate">
+              <div class="form-grid">
+                <label>Manifest CSV
+                  <input type="text" name="manifest" data-default="manifest">
+                </label>
+                <label>Output Directory
+                  <input type="text" name="output_dir" data-default="validation_output_dir">
+                </label>
+                <label>Mask Label Value
+                  <input type="number" name="label_value" data-default="label_value">
+                </label>
+                <label>Geometry Tolerance
+                  <input type="text" name="tolerance" data-default="tolerance">
+                </label>
+              </div>
+              <div class="actions">
+                <button type="submit">Run Validation</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <p class="section-tag">Results</p>
+                <h2>Validation Output</h2>
+              </div>
+            </div>
+            <div id="result-cards" class="metric-grid"></div>
+            <div class="result-grid">
+              <div class="subcard">
+                <h3>Stage Summary</h3>
+                <div id="result-steps" class="steps"></div>
+              </div>
+              <div class="subcard">
+                <h3 id="chart-title">Visual Summary</h3>
+                <div id="result-chart" class="chart-panel empty-state">Run validation to see the result chart.</div>
+              </div>
+            </div>
+            <div id="result-table" class="table-wrap hidden"></div>
+            <div id="result-files" class="file-list"></div>
+          </article>
+        </section>
+
+        <aside class="side-column">
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <p class="section-tag">Preview</p>
+                <h2>Dataset Inspector</h2>
+                <p class="section-copy">Inspect manifest rows and label groups before starting the validation run.</p>
+              </div>
+              <button type="button" data-refresh-preview="data">Refresh</button>
+            </div>
+            <div id="data-preview-cards" class="metric-grid compact-grid"></div>
+            <div id="data-label-groups" class="chip-grid"></div>
+            <div id="data-preview-table" class="table-wrap hidden"></div>
+          </article>
+        </aside>
+      </section>
+    </main>
+    <script src="/static/dashboard.js" defer></script>
+  </body>
+</html>

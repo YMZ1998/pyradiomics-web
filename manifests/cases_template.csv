@@ -1,0 +1,3 @@
+case_id,image_path,mask_path,label
+case_001,D:/data/case_001/image.nii.gz,D:/data/case_001/mask.nii.gz,
+case_002,D:/data/case_002/image.nii.gz,D:/data/case_002/mask.nii.gz,
