@@ -1,8 +1,6 @@
-import pandas as pd
 from autogluon.tabular import TabularPredictor
 
 from common import load_labeled_data, merge_and_shuffle, split_df
-
 
 random_state = 2021
 mcn_data, scn_data = load_labeled_data('MCN_data_select.csv', 'SCN_data_select.csv', random_state=random_state)

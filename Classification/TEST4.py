@@ -1,13 +1,15 @@
 # -- coding: utf-8 --
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler  # 标准化工具包StandardScaler
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV  # 分割训练集和验证集
-import matplotlib.pyplot as plt
-from compute_metric import calculate_metric
-import warnings
-from tqdm import tqdm
 import time
+import warnings
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split  # 分割训练集和验证集
+from sklearn.preprocessing import StandardScaler  # 标准化工具包StandardScaler
+from tqdm import tqdm
+
+from compute_metric import calculate_metric
 
 T = time.time()
 warnings.filterwarnings("ignore")
@@ -52,7 +54,7 @@ for modelname in NAME[:-1]:
         auc, acc, sen, spe, pre, f1 = calculate_metric(label, predict_label)
         for m, a in zip(metric, [auc, acc, sen, spe, pre, f1]):
             s[m].append(a)
-        from sklearn.metrics import RocCurveDisplay, roc_curve, auc
+        from sklearn.metrics import roc_curve, auc
 
         fpr, tpr, thresholds = roc_curve(label, predict_label, pos_label=1)
         roc_auc = auc(fpr, tpr)

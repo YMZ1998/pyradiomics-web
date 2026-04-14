@@ -9,7 +9,6 @@ from sklearn.neural_network import MLPClassifier
 
 from common import build_features_and_labels, load_labeled_data, merge_and_shuffle
 
-
 T = time.time()
 warnings.filterwarnings('ignore')
 random_state = None
@@ -29,7 +28,8 @@ clf1 = LogisticRegression(solver='liblinear', penalty='l2', max_iter=50, C=0.4)
 from sklearn import svm
 
 clf2 = svm.SVC(probability=True, gamma='scale', kernel='linear', C=0.1, cache_size=1, max_iter=30)
-clf3 = MLPClassifier(solver='lbfgs', alpha=0.1, hidden_layer_sizes=(12, 3), max_iter=100, random_state=1, learning_rate_init=1e-5)
+clf3 = MLPClassifier(solver='lbfgs', alpha=0.1, hidden_layer_sizes=(12, 3), max_iter=100, random_state=1,
+                     learning_rate_init=1e-5)
 
 eclf = VotingClassifier(estimators=[('lr', clf1), ('rf', clf2), ('gnb', clf3)], voting='hard')
 

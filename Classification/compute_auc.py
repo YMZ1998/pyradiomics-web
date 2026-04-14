@@ -1,5 +1,4 @@
-from sklearn.metrics import precision_score, f1_score, recall_score, accuracy_score, \
-    classification_report, roc_auc_score, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix
 
 # MCN 1 SCN 0   51  56
 labels = ['SCN', 'MCN']
@@ -25,7 +24,6 @@ for i in range(51):
     truth.append(1)
 for i in range(56):
     truth.append(0)
-from sklearn.utils import shuffle
 
 # pred=shuffle(pred,random_state=2)
 # truth=shuffle(truth,random_state=2)
@@ -79,20 +77,20 @@ import seaborn as sns
 
 confusion = confusion_matrix(truth, pred, labels=[0, 1], normalize=None)  # 计算混淆矩阵
 print(confusion)
-TN ,FP ,FN ,TP= confusion.ravel()
-confusion=[[TP,FN],[FP,TN]]
+TN, FP, FN, TP = confusion.ravel()
+confusion = [[TP, FN], [FP, TN]]
 labels = ['MCN', 'SCN']
 plt.figure(figsize=(6, 5))
 sns.heatmap(confusion, cmap='YlGnBu', annot=True,
-            annot_kws={'fontproperties': 'Times New Roman','size': 20, 'weight': 'bold',
-                       }, xticklabels=labels,square=True,
+            annot_kws={'fontproperties': 'Times New Roman', 'size': 20, 'weight': 'bold',
+                       }, xticklabels=labels, square=True,
             yticklabels=labels)  # 绘制混淆矩阵
-plt.yticks(fontproperties='Times New Roman',size=14,rotation='horizontal')
-plt.xticks(fontproperties='Times New Roman',size=14)
+plt.yticks(fontproperties='Times New Roman', size=14, rotation='horizontal')
+plt.xticks(fontproperties='Times New Roman', size=14)
 title = 'DenseNet201+CBAM'
 plt.title(title, fontproperties='Times New Roman', size=18)
-plt.xlabel('Predict',fontproperties='Times New Roman', size=18)
-plt.ylabel('True',fontproperties='Times New Roman', size=18)
+plt.xlabel('Predict', fontproperties='Times New Roman', size=18)
+plt.ylabel('True', fontproperties='Times New Roman', size=18)
 plt.tight_layout()
 plt.savefig('./Figure/' + title + '.png', dpi=600)
 plt.show()

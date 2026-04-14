@@ -1,8 +1,7 @@
 # -- coding: utf-8 --
-import SimpleITK as sitk
-import os
-import numpy as np
 import glob
+
+import SimpleITK as sitk
 
 
 def window_transform(ct_array, windowWidth, windowCenter, normal=True):

@@ -1,7 +1,6 @@
 # -- coding: utf-8 --
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 from sklearn.linear_model import LassoCV  # 导入Lasso工具包LassoCV
 from sklearn.preprocessing import StandardScaler  # 标准化工具包StandardScaler
 
@@ -38,8 +37,7 @@ for column_name in MCN_data.columns[1:]:
         if ttest_ind(MCN_data[column_name], SCN_data[column_name], equal_var=False)[1] < 0.05:
             columns_index.append(column_name)
 print("筛选后剩下的特征数：{}个".format(len(columns_index)))
-from kydavra import MUSESelector, PointBiserialCorrSelector, LassoSelector, ChiSquaredSelector, \
-    PointBiserialCorrSelector
+from kydavra import MUSESelector
 
 # 数据只保留从T检验筛选出的特征数据，重新组合成data
 if not 'label' in columns_index:
@@ -96,7 +94,6 @@ NAME = ['svm', 'forest', 'knn', 'bayes', 'MLP', 'adaboost', 'decisiontree', 'log
 modelname = NAME[0]
 print('Model:{}'.format(modelname))
 from sklearn.model_selection import train_test_split, cross_val_score  # 分割训练集和验证集
-import joblib  # 用来保存 sklearn 训练好的模型
 
 index_ = coef[coef != 0].index
 pd.DataFrame(data, columns=index_).to_csv('data.csv')
@@ -144,7 +141,7 @@ for i in range(1, TIMES + 1):
         model = DecisionTreeClassifier(criterion='entropy')
         model.fit(x_train, y_train)
     elif modelname == 'bayes':
-        from sklearn.naive_bayes import GaussianNB, MultinomialNB, ComplementNB
+        from sklearn.naive_bayes import GaussianNB
 
         model = GaussianNB()
         model.fit(x_train, y_train)
@@ -180,15 +177,16 @@ for i in range(1, TIMES + 1):
     print("平均：{}".format(mean_score))
 
     # 绘制混淆矩阵
-    from sklearn.metrics import confusion_matrix, classification_report, plot_confusion_matrix
+    from sklearn.metrics import confusion_matrix, classification_report
 
     predict_label = model.predict(x_test)  # 预测的标签
     label = y_test.to_list()  # 真实标签
     print(' Truth :', label)
     print('Predict:', predict_label.tolist())
     confusion = confusion_matrix(label, predict_label)  # 计算混淆矩阵
-    print("验证集一共有{}行特征数据，{}列不同特征,包含MCN:{}例，SCN:{}例".format(len(x_test), x_test.shape[1], np.sum(label),
-                                                           len(label) - np.sum(label)))
+    print("验证集一共有{}行特征数据，{}列不同特征,包含MCN:{}例，SCN:{}例".format(len(x_test), x_test.shape[1],
+                                                                               np.sum(label),
+                                                                               len(label) - np.sum(label)))
     print("混淆矩阵为：\n{}".format(confusion))
     print("\n计算各项指标：")
     print(classification_report(label, predict_label))

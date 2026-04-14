@@ -1,13 +1,12 @@
 # -- coding: utf-8 --
-import pandas as pd
-import numpy as np
-from sklearn.linear_model import LassoCV  # 导入Lasso工具包LassoCV
-from sklearn.preprocessing import StandardScaler  # 标准化工具包StandardScaler
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV  # 分割训练集和验证集
-from sklearn.metrics import make_scorer, f1_score
-import matplotlib.pyplot as plt
-import warnings
 import time
+import warnings
+
+import numpy as np
+import pandas as pd
+from sklearn.metrics import make_scorer, f1_score
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV  # 分割训练集和验证集
+from sklearn.preprocessing import StandardScaler  # 标准化工具包StandardScaler
 
 T = time.time()
 warnings.filterwarnings("ignore")
@@ -38,8 +37,6 @@ for modelname in NAME[:]:
         standardscaler = StandardScaler()
         X = standardscaler.fit_transform(X)  # 对x进行均值-标准差归一化
         # feature
-        from sklearn.svm import LinearSVC
-        from sklearn.feature_selection import SelectFromModel
 
         # lsvc = LinearSVC(C=0.1, penalty="l2", dual=False).fit(X, y)
         # model = SelectFromModel(lsvc, prefit=True)
@@ -92,7 +89,7 @@ for modelname in NAME[:]:
             model = grid_obj.best_estimator_
             print(grid_obj.best_params_)
         elif modelname == 'bayes':
-            from sklearn.naive_bayes import GaussianNB, MultinomialNB, ComplementNB
+            from sklearn.naive_bayes import GaussianNB
 
             model = GaussianNB()
         elif modelname == 'MLP':
