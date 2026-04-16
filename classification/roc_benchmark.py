@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split  # 分割训练集和验证
 from sklearn.preprocessing import StandardScaler  # 标准化工具包StandardScaler
 from tqdm import tqdm
 
-from compute_metric import calculate_metric
+from classification.compute_metric import calculate_metric
 
 if __name__ == '__main__':
     T = time.time()
@@ -46,9 +46,9 @@ if __name__ == '__main__':
             standardscaler = StandardScaler()
             X = standardscaler.fit_transform(X)  # 对x进行均值-标准差归一化
             x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-            from Model import Model
+            from classification.model_factory import build_model
 
-            model = Model(modelname, x_train, y_train)
+            model = build_model(modelname, x_train=x_train, y_train=y_train)
             model.fit(x_train, y_train)
             predict_label = model.predict(x_test)  # 预测的标签
             label = y_test.to_list()  # 真实标签
@@ -69,9 +69,9 @@ if __name__ == '__main__':
             std = round(np.std(s[m]), 2)
             S[m] = str(mean_score) + '±' + str(std)
         Score[modelname] = S
-        from Roc_plot import Mean_roc_plot
+        from classification.roc_plot import mean_roc_plot
 
-        Mean_roc_plot(ax, tprs, aucs, mean_fpr, modelname)
+        mean_roc_plot(ax, tprs, aucs, mean_fpr, modelname)
         print(S)
     print(Score)
     pd.DataFrame(Score).T.to_csv('metric.csv', encoding='utf-8')

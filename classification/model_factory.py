@@ -89,11 +89,19 @@ _MODEL_BUILDERS = {
 }
 
 
-def Model(modelname, x_train, y_train):
-    """Keep legacy function signature for compatibility."""
+def build_model(modelname, x_train=None, y_train=None):
+    """Build a legacy model instance by display name."""
     _ = (x_train, y_train)
     try:
         return _MODEL_BUILDERS[modelname]()
     except KeyError:
         print('No this method')
         raise ValueError('Unsupported model: {}'.format(modelname))
+
+
+def Model(modelname, x_train, y_train):
+    """Keep legacy function signature for compatibility."""
+    return build_model(modelname, x_train=x_train, y_train=y_train)
+
+
+__all__ = ["build_model", "Model", "NAME"]

@@ -16,9 +16,13 @@ class ExampleDatasetPaths:
 
 def build_test_data_examples(workspace: Path) -> ExampleDatasetPaths:
     workspace = workspace.resolve()
-    test_data_root = workspace / "Classification" / "test_data"
-    if not test_data_root.is_dir():
-        raise FileNotFoundError(f"Test data directory not found: {test_data_root}")
+    candidate_roots = [
+        workspace / "classification" / "test_data",
+        workspace / "Classification" / "test_data",
+    ]
+    test_data_root = next((path for path in candidate_roots if path.is_dir()), None)
+    if test_data_root is None:
+        raise FileNotFoundError(f"Test data directory not found in: {candidate_roots}")
 
     examples_dir = workspace / "outputs" / "examples"
     examples_dir.mkdir(parents=True, exist_ok=True)
@@ -66,4 +70,3 @@ def build_test_data_examples(workspace: Path) -> ExampleDatasetPaths:
         features=features_path,
         params=params_path,
     )
-

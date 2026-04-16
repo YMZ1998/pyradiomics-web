@@ -20,6 +20,10 @@ The lower-level algorithm modules are still intentionally simple:
 - `pyrad_workflow/modeling.py`
 - `pyrad_workflow/io_utils.py`
 
+The legacy classification helpers now live under the canonical
+`classification/` package. Compatibility aliases for historical
+`Classification` imports remain available during the transition.
+
 Compatibility wrappers remain in place for older imports such as
 `pyrad_workflow.webapp`, `pyrad_workflow.services`, `pyrad_workflow.app_config`,
 and `pyrad_workflow.workspace`.

@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from sklearn.base import clone
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel, SelectKBest, VarianceThreshold, f_classif, mutual_info_classif
@@ -25,6 +26,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import label_binarize
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
+from classification import mean_roc_plot
 
 LOGGER = logging.getLogger("pyrad_workflow")
 ProgressCallback = Callable[[float, str], None]
@@ -502,44 +504,56 @@ def _plot_roc_curve_image(
     score_frame: pd.DataFrame,
     output_path: Path,
     title: str,
+    tprs=None,
+    aucs=None,
+    mean_fpr=None,
 ) -> Path | None:
     classes = sorted(truth.astype(str).dropna().unique().tolist())
     if len(classes) < 2:
         return None
 
-    figure, axis = plt.subplots(figsize=(6.5, 5.2))
-    axis.plot([0, 1], [0, 1], linestyle="--", color="#90a4b8", linewidth=1.2, label="Baseline")
-
     if len(classes) == 2:
         positive_label = classes[-1]
         score_column = f"prob_{positive_label}"
         if score_column not in score_frame.columns:
-          return None
-        binary_truth = (truth.astype(str) == positive_label).astype(int)
-        fpr, tpr, _ = roc_curve(binary_truth, score_frame[score_column])
-        roc_value = auc(fpr, tpr)
-        axis.plot(fpr, tpr, linewidth=2, label=f"{positive_label} (AUC={roc_value:.3f})", color="#1f5f95")
-    else:
-        truth_matrix = label_binarize(truth.astype(str), classes=classes)
-        drew_curve = False
-        colors = ["#1f5f95", "#2b8c6b", "#b5473a", "#8a5bd8", "#dd8b2a"]
-        for index, class_name in enumerate(classes):
-            score_column = f"prob_{class_name}"
-            if score_column not in score_frame.columns:
-                continue
-            fpr, tpr, _ = roc_curve(truth_matrix[:, index], score_frame[score_column])
-            roc_value = auc(fpr, tpr)
-            axis.plot(
-                fpr,
-                tpr,
-                linewidth=2,
-                label=f"{class_name} (AUC={roc_value:.3f})",
-                color=colors[index % len(colors)],
-            )
-            drew_curve = True
-        if not drew_curve:
-            plt.close(figure)
             return None
+        if mean_fpr is None:
+            mean_fpr = np.linspace(0, 1, 100)
+        if tprs is None or aucs is None:
+            binary_truth = (truth.astype(str) == positive_label).astype(int)
+            fpr, tpr, _ = roc_curve(binary_truth, score_frame[score_column])
+            interpolated = np.interp(mean_fpr, fpr, tpr)
+            interpolated[0] = 0.0
+            tprs = [interpolated]
+            aucs = [auc(fpr, tpr)]
+
+        figure, axis = plt.subplots(figsize=(6.5, 5.2))
+        mean_roc_plot(axis, tprs, aucs, mean_fpr, title, output_path=output_path)
+        plt.close(figure)
+        return output_path
+
+    figure, axis = plt.subplots(figsize=(6.5, 5.2))
+    axis.plot([0, 1], [0, 1], linestyle="--", color="#90a4b8", linewidth=1.2, label="Baseline")
+    truth_matrix = label_binarize(truth.astype(str), classes=classes)
+    drew_curve = False
+    colors = ["#1f5f95", "#2b8c6b", "#b5473a", "#8a5bd8", "#dd8b2a"]
+    for index, class_name in enumerate(classes):
+        score_column = f"prob_{class_name}"
+        if score_column not in score_frame.columns:
+            continue
+        fpr, tpr, _ = roc_curve(truth_matrix[:, index], score_frame[score_column])
+        roc_value = auc(fpr, tpr)
+        axis.plot(
+            fpr,
+            tpr,
+            linewidth=2,
+            label=f"{class_name} (AUC={roc_value:.3f})",
+            color=colors[index % len(colors)],
+        )
+        drew_curve = True
+    if not drew_curve:
+        plt.close(figure)
+        return None
 
     axis.set_title(title)
     axis.set_xlabel("False Positive Rate")
@@ -549,6 +563,44 @@ def _plot_roc_curve_image(
     figure.savefig(output_path, dpi=180, bbox_inches="tight")
     plt.close(figure)
     return output_path
+
+
+def collect_cv_roc_data(
+    pipeline: Pipeline,
+    features: pd.DataFrame,
+    labels: pd.Series,
+    cv: StratifiedKFold,
+):
+    classes = sorted(labels.astype(str).unique().tolist())
+    if len(classes) != 2:
+        return None, None, None
+
+    positive_label = classes[-1]
+    mean_fpr = np.linspace(0, 1, 100)
+    tprs = []
+    aucs = []
+
+    for train_index, test_index in cv.split(features, labels):
+        fitted = clone(pipeline)
+        x_train = features.iloc[train_index]
+        x_test = features.iloc[test_index]
+        y_train = labels.iloc[train_index]
+        y_test = labels.iloc[test_index]
+        fitted.fit(x_train, y_train)
+        score_frame = compute_prediction_score_frame(fitted, x_test)
+        score_column = f"prob_{positive_label}"
+        if score_column not in score_frame.columns:
+            continue
+        binary_truth = (y_test.astype(str) == positive_label).astype(int)
+        fpr, tpr, _ = roc_curve(binary_truth, score_frame[score_column])
+        interpolated = np.interp(mean_fpr, fpr, tpr)
+        interpolated[0] = 0.0
+        tprs.append(interpolated)
+        aucs.append(auc(fpr, tpr))
+
+    if not tprs:
+        return None, None, None
+    return tprs, aucs, mean_fpr
 
 
 def prepare_prediction_data(
@@ -741,6 +793,7 @@ def train_and_evaluate(
                 index=prepared.features.index,
             )
             roc_auc_value = compute_auc_from_score_frame(prepared.labels.reset_index(drop=True), cv_probability_frame.reset_index(drop=True))
+            cv_tprs, cv_aucs, cv_mean_fpr = collect_cv_roc_data(pipeline, prepared.features, prepared.labels, cv)
             fitted_pipeline = pipeline.fit(prepared.features, prepared.labels)
             probability_frame = compute_prediction_score_frame(fitted_pipeline, prepared.features)
 
@@ -755,6 +808,9 @@ def train_and_evaluate(
                 probability_frame.reset_index(drop=True),
                 roc_curve_path,
                 f"{MODEL_DISPLAY_NAMES.get(model_name, model_name)} ROC Curve",
+                tprs=cv_tprs,
+                aucs=cv_aucs,
+                mean_fpr=cv_mean_fpr,
             )
             model_path = save_model_bundle(
                 output_dir,

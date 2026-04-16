@@ -1,7 +1,7 @@
 import pandas as pd
 from autogluon.tabular import TabularPredictor
 
-from common import load_labeled_data, merge_and_shuffle, split_df
+from classification.common import load_labeled_data, merge_and_shuffle, split_df
 
 
 random_state = 2021

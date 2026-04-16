@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # truth=shuffle(truth,random_state=2)
     print(pred)
     print(truth)
-    from compute_metric import calculate_metric
+    from classification.compute_metric import calculate_metric
 
     calculate_metric(truth, pred, verbose=1)
     print(classification_report(truth, pred, target_names=labels))

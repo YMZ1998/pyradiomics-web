@@ -3,6 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from .examples import ExampleDatasetPaths, build_test_data_examples
+from .mask_rebuild import create_new_mask
+from .model_factory import build_model
+from .roc_plot import draw_roc, mean_roc_plot
 
 NON_FEATURE_COLUMNS = {
     "case_id",
@@ -107,9 +110,13 @@ __all__ = [
     "NON_FEATURE_COLUMNS",
     "available_models",
     "available_selection_methods",
+    "build_model",
     "build_models",
     "build_test_data_examples",
+    "create_new_mask",
+    "draw_roc",
     "load_labels",
+    "mean_roc_plot",
     "predict_and_evaluate",
     "prepare_training_data",
     "select_features",

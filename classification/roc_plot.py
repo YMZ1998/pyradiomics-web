@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 
 
 # ROC曲线画图函数
-def DrawROC(fpr, tpr, roc_auc, title='ROC curve'):
+def draw_roc(fpr, tpr, roc_auc, title='ROC curve'):
     plt.plot([0, 1], [0, 1], '--', color=(0.7, 0.7, 0.7))
     plt.plot(fpr, tpr, 'k--', label='ROC (area = %0.2f)' % roc_auc, lw=2)
     plt.xlim([0.00, 1.00])
@@ -15,7 +16,7 @@ def DrawROC(fpr, tpr, roc_auc, title='ROC curve'):
     plt.show()
 
 
-def Mean_roc_plot(ax, tprs, aucs, mean_fpr, figname):
+def mean_roc_plot(ax, tprs, aucs, mean_fpr, figname, output_path=None):
     ax.plot([0, 1], [0, 1], linestyle="--", lw=2, color="r", label="Chance", alpha=0.8)
     mean_tpr = np.mean(tprs, axis=0)
     mean_tpr[-1] = 1.0
@@ -49,7 +50,24 @@ def Mean_roc_plot(ax, tprs, aucs, mean_fpr, figname):
         title=figname,
     )
     ax.legend(loc="lower right")
-    path = "./Figure/"
     plt.tight_layout()
-    plt.savefig(path + figname + '.png', dpi=600)
+    if output_path is None:
+        path = Path("./Figure")
+        path.mkdir(parents=True, exist_ok=True)
+        output_path = path / f"{figname}.png"
+    else:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(str(output_path), dpi=600)
     # plt.show()
+
+
+def DrawROC(*args, **kwargs):
+    return draw_roc(*args, **kwargs)
+
+
+def Mean_roc_plot(*args, **kwargs):
+    return mean_roc_plot(*args, **kwargs)
+
+
+__all__ = ["draw_roc", "mean_roc_plot", "DrawROC", "Mean_roc_plot"]

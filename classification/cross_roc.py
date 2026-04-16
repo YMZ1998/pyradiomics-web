@@ -5,7 +5,7 @@ from sklearn import svm
 from sklearn.metrics import RocCurveDisplay, auc
 from sklearn.model_selection import StratifiedKFold
 
-from common import build_features_and_labels, load_labeled_data, merge_and_shuffle
+from classification.common import build_features_and_labels, load_labeled_data, merge_and_shuffle
 
 
 random_state = None

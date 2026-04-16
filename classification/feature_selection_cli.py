@@ -1,14 +1,14 @@
 # -- coding: utf-8 --
 """Legacy entry script kept for compatibility.
 
-Prefer importing ``Classification.select_features`` from application code.
+Prefer importing ``classification.select_features`` from application code.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from Classification import build_test_data_examples, select_features
+from classification import build_test_data_examples, select_features
 
 
 def run_feature_selection_cli(

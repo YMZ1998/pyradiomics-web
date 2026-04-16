@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 from autogluon.tabular import TabularPredictor
-from Classification import build_test_data_examples
+from classification import build_test_data_examples
 
 
 def load_tabular_model(model_dir: str | Path = "agModels-predictClass") -> TabularPredictor:

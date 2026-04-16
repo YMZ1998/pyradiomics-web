@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from Classification import available_models, available_selection_methods, build_test_data_examples
+from classification import available_models, available_selection_methods, build_test_data_examples
 from ..modeling import DEFAULT_SAFE_MODEL_NAMES
 
 from ..constants import (

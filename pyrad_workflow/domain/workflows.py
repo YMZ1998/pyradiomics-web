@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Callable
 
 import pandas as pd
-from Classification import predict_and_evaluate, select_features, train_and_evaluate
+from classification import predict_and_evaluate, select_features, train_and_evaluate
 
 from ..constants import (
     DEFAULT_CORRELATION_THRESHOLD,

@@ -4,9 +4,12 @@ import subprocess
 import sys
 import traceback
 from multiprocessing import Process, Queue
+from pathlib import Path
 
 import pandas as pd
 from tqdm import tqdm
+
+DEFAULT_PARAM_PATH = Path(__file__).with_name("ct_extractor.yaml")
 
 
 def list_kind_folders(data_root):
@@ -20,11 +23,11 @@ def list_kind_folders(data_root):
     return kinds
 
 
-def create_extractor(para_path='./CT-extractor.yaml'):
+def create_extractor(para_path: str | Path = DEFAULT_PARAM_PATH):
     """Create a pyradiomics extractor from yaml config."""
     from radiomics import featureextractor
 
-    return featureextractor.RadiomicsFeatureExtractor(para_path)
+    return featureextractor.RadiomicsFeatureExtractor(str(para_path))
 
 
 def check_runtime_dependencies():
@@ -109,7 +112,7 @@ def extract_single_case_features_isolated(ori_path, lab_path, para_path, timeout
     return result.get('ok', False), result
 
 
-def extract_kind_features(kind, extractor, data_root="", para_path='./CT-extractor.yaml',
+def extract_kind_features(kind, extractor, data_root="", para_path: str | Path = DEFAULT_PARAM_PATH,
                           isolate_case=True):
     """Extract all cases for one class label (kind)."""
     kind_path = os.path.join(data_root, kind)
@@ -147,7 +150,7 @@ def extract_kind_features(kind, extractor, data_root="", para_path='./CT-extract
     return pd.DataFrame(rows)
 
 
-def extract_and_save_all_kinds(data_root="", kinds=None, para_path='./CT-extractor.yaml'):
+def extract_and_save_all_kinds(data_root="", kinds=None, para_path: str | Path = DEFAULT_PARAM_PATH):
     """Run feature extraction for all kinds and save <kind>.csv."""
     check_runtime_dependencies()
 
@@ -169,5 +172,5 @@ def extract_and_save_all_kinds(data_root="", kinds=None, para_path='./CT-extract
 
 
 if __name__ == '__main__':
-    DEFAULT_DATA_ROOT = r'D:\code\pyradiomics\Classification\test_data'
+    DEFAULT_DATA_ROOT = r"D:\code\pyradiomics\classification\test_data"
     extract_and_save_all_kinds(DEFAULT_DATA_ROOT)

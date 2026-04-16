@@ -7,7 +7,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.neural_network import MLPClassifier
 
-from common import build_features_and_labels, load_labeled_data, merge_and_shuffle
+from classification.common import build_features_and_labels, load_labeled_data, merge_and_shuffle
 
 if __name__ == '__main__':
     T = time.time()

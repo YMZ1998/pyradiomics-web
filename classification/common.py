@@ -1,5 +1,5 @@
 # -- coding: utf-8 --
-"""Shared helpers for legacy scripts in Classification."""
+"""Shared helpers for legacy scripts in classification."""
 
 from __future__ import annotations
 
