@@ -1,21 +1,29 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
 from autogluon.tabular import TabularPredictor
+from Classification import build_test_data_examples
 
-from common import load_labeled_data, merge_and_shuffle, split_df
 
-random_state = 2021
-mcn_data, scn_data = load_labeled_data('MCN_data_select.csv', 'SCN_data_select.csv', random_state=random_state)
-data = merge_and_shuffle(mcn_data, scn_data, random_state=random_state)
-print(data.columns)
-data = data.drop(columns='Unnamed: 0')
+def load_tabular_model(model_dir: str | Path = "agModels-predictClass") -> TabularPredictor:
+    return TabularPredictor.load(str(model_dir))
 
-train_data, test_data = split_df(data, 0.8)
-y_test = test_data['label']
-test_data = test_data.drop(columns=['label'])
 
-save_path = 'agModels-predictClass'
-predictor = TabularPredictor.load(save_path)
-y_pred = predictor.predict(test_data)
-print('Truth:\n', y_test)
-print('Predictions:\n', y_pred)
+def predict_from_csv(model_dir: str | Path, csv_path: str | Path, label_column: str = "label"):
+    predictor = load_tabular_model(model_dir)
+    frame = pd.read_csv(csv_path)
+    truth = frame[label_column] if label_column in frame.columns else None
+    features = frame.drop(columns=[label_column], errors="ignore")
+    predictions = predictor.predict(features)
+    return truth, predictions
 
-results = predictor.fit_summary(show_plot=True)
+
+if __name__ == "__main__":
+    workspace = Path(__file__).resolve().parents[1]
+    examples = build_test_data_examples(workspace)
+    truth, predictions = predict_from_csv("agModels-predictClass", examples.features)
+    if truth is not None:
+        print("Truth:\n", truth)
+    print("Predictions:\n", predictions)

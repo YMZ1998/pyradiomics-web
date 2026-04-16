@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -61,6 +61,10 @@ def install_routes(
     def train_page() -> FileResponse:
         return serve_page("train.html")
 
+    @app.get("/predict", response_class=FileResponse)
+    def predict_page() -> FileResponse:
+        return serve_page("predict.html")
+
     @app.get("/full", response_class=FileResponse)
     def full_page() -> FileResponse:
         return serve_page("full.html")
@@ -76,8 +80,8 @@ def install_routes(
 
     @app.get("/api/config")
     @app.get("/api/v1/config")
-    def api_config() -> dict[str, Any]:
-        return {"defaults": service.default_paths()}
+    def api_config(task: Optional[str] = None) -> dict[str, Any]:
+        return {"defaults": service.default_paths(task_name=task)}
 
     @app.post("/api/inspect/data")
     @app.post("/api/v1/inspect/data")
@@ -94,6 +98,16 @@ def install_routes(
     async def api_inspect_features(request: Request):
         try:
             return service.inspect_features(await parse_payload(request))
+        except HTTPException:
+            raise
+        except Exception as exc:
+            return error_response(str(exc))
+
+    @app.post("/api/inspect/models")
+    @app.post("/api/v1/inspect/models")
+    async def api_inspect_models(request: Request):
+        try:
+            return service.inspect_models(await parse_payload(request))
         except HTTPException:
             raise
         except Exception as exc:
@@ -130,6 +144,15 @@ def install_routes(
     async def api_train(request: Request):
         try:
             return run_sync_endpoint("train", await parse_payload(request))
+        except HTTPException:
+            raise
+        except Exception as exc:
+            return error_response(str(exc))
+
+    @app.post("/api/predict")
+    async def api_predict(request: Request):
+        try:
+            return run_sync_endpoint("predict", await parse_payload(request))
         except HTTPException:
             raise
         except Exception as exc:

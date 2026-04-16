@@ -51,9 +51,10 @@ Available pages:
 
 ## Default Files
 
-- Manifest example: `manifests/examples/Dataset006_NPC2_cases.csv`
+- Manifest example: `outputs/examples/test_data_manifest.csv`
 - Radiomics params: `configs/ct_radiomics.yaml`
-- Labels template: `manifests/labels_template.csv`
+- Labels example: `outputs/examples/test_data_labels.csv`
+- Feature example: `outputs/examples/test_data_features.csv`
 
 ## Outputs
 

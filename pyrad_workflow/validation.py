@@ -1,16 +1,33 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import pandas as pd
 
 from .io_utils import count_mask_voxels, geometry_matches, image_metadata, read_pair
 
 LOGGER = logging.getLogger("pyrad_workflow")
+ProgressCallback = Callable[[float, str], None]
 
 REQUIRED_COLUMNS = ("case_id", "image_path", "mask_path", "label")
+
+
+def normalize_case_id_series(series: pd.Series) -> pd.Series:
+    def _normalize(value) -> str:
+        if pd.isna(value):
+            return ""
+        text = str(value).strip()
+        if text == "":
+            return ""
+        if re.fullmatch(r"[+-]?\d+(?:\.0+)?", text):
+            return str(int(float(text)))
+        return text
+
+    return series.map(_normalize).astype(str)
 
 
 @dataclass(frozen=True)
@@ -46,11 +63,17 @@ def load_manifest(path: Path) -> pd.DataFrame:
     if missing:
         LOGGER.error("Manifest missing required columns: %s", ", ".join(missing))
         raise ValueError(f"Manifest missing required columns: {', '.join(missing)}")
+    frame["case_id"] = normalize_case_id_series(frame["case_id"])
     if frame["case_id"].duplicated().any():
         duplicates = frame.loc[frame["case_id"].duplicated(), "case_id"].astype(str).tolist()
         LOGGER.error("Manifest contains duplicate case_id values: %s", ", ".join(duplicates))
         raise ValueError(f"Manifest contains duplicate case_id values: {', '.join(duplicates)}")
-    LOGGER.info("Manifest loaded successfully with %s cases", len(frame))
+    LOGGER.info(
+        "Manifest loaded successfully: cases=%s columns=%s labels=%s",
+        len(frame),
+        list(frame.columns),
+        sorted(frame["label"].astype(str).dropna().unique().tolist()),
+    )
     return frame
 
 
@@ -120,7 +143,26 @@ def validate_case(row: pd.Series, label_value: int = 1, tolerance: float = 1e-6)
     )
 
 
-def validate_manifest(manifest_path: Path, label_value: int = 1, tolerance: float = 1e-6) -> pd.DataFrame:
+def validate_manifest(
+    manifest_path: Path,
+    label_value: int = 1,
+    tolerance: float = 1e-6,
+    progress_callback: ProgressCallback | None = None,
+) -> pd.DataFrame:
+    return validate_manifest_with_progress(
+        manifest_path,
+        label_value=label_value,
+        tolerance=tolerance,
+        progress_callback=progress_callback,
+    )
+
+
+def validate_manifest_with_progress(
+    manifest_path: Path,
+    label_value: int = 1,
+    tolerance: float = 1e-6,
+    progress_callback: ProgressCallback | None = None,
+) -> pd.DataFrame:
     manifest = load_manifest(manifest_path)
     LOGGER.info(
         "Validating %s cases with label_value=%s tolerance=%s",
@@ -128,6 +170,9 @@ def validate_manifest(manifest_path: Path, label_value: int = 1, tolerance: floa
         label_value,
         tolerance,
     )
+    total_cases = max(len(manifest), 1)
+    if progress_callback is not None:
+        progress_callback(0.0, f"Preparing validation for {len(manifest)} cases")
 
     results = []
     for index, (_, row) in enumerate(manifest.iterrows(), start=1):
@@ -139,8 +184,15 @@ def validate_manifest(manifest_path: Path, label_value: int = 1, tolerance: floa
         else:
             LOGGER.warning("Case %s validation status=%s message=%s", case_id, result.status, result.message)
         results.append(result.to_record())
+        if progress_callback is not None:
+            progress_callback((index / total_cases) * 100.0, f"Validated case {index}/{len(manifest)}: {case_id}")
 
     result_frame = pd.DataFrame(results)
     invalid_count = int((~result_frame["is_valid"].astype(bool)).sum())
     LOGGER.info("Validation summary: total_cases=%s invalid_cases=%s", len(result_frame), invalid_count)
+    if invalid_count:
+        invalid_preview = result_frame.loc[~result_frame["is_valid"].astype(bool), ["case_id", "status", "message"]].head(5)
+        LOGGER.info("Validation invalid preview: %s", invalid_preview.to_dict(orient="records"))
+    if progress_callback is not None:
+        progress_callback(100.0, "Validation complete")
     return manifest.merge(result_frame, on="case_id", how="left")

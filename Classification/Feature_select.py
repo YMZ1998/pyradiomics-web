@@ -1,62 +1,33 @@
 # -- coding: utf-8 --
-import time
-import warnings
+"""Legacy entry script kept for compatibility.
 
-import numpy as np
-import pandas as pd
-from sklearn.feature_selection import SelectFromModel
-from sklearn.model_selection import train_test_split
-from sklearn.svm import LinearSVC
+Prefer importing ``Classification.select_features`` from application code.
+"""
 
-from common import build_features_and_labels, load_labeled_data, merge_and_shuffle
-from compute_metric import calculate_metric
+from __future__ import annotations
 
-if __name__ == '__main__':
-    T = time.time()
-    warnings.filterwarnings('ignore')
-    random_state = None
+from pathlib import Path
 
-    print('-' * 100)
-    print('Read select data')
+from Classification import build_test_data_examples, select_features
 
-    mcn_data, scn_data = load_labeled_data('MCN_data_select.csv', 'SCN_data_select.csv', random_state=random_state)
-    data = merge_and_shuffle(mcn_data, scn_data, random_state=random_state)
-    print('一共{}行特征数据'.format(len(data)))
-    print('一共{}列不同特征'.format(data.shape[1]))
 
-    column_names = data.columns[2:]
-    X, y = build_features_and_labels(data, feature_start_col=2, scale=True)
-    X = pd.DataFrame(X, columns=column_names)
-    print(X.shape)
+def run_feature_selection_cli(
+    features_path: str = "outputs/examples/test_data_features.csv",
+    output_dir: str = "outputs/legacy_feature_select",
+    labels_path: str = "outputs/examples/test_data_labels.csv",
+    top_k: int = 20,
+) -> None:
+    workspace = Path(__file__).resolve().parents[1]
+    examples = build_test_data_examples(workspace)
+    artifacts = select_features(
+        examples.features if features_path == "outputs/examples/test_data_features.csv" else Path(features_path),
+        Path(output_dir),
+        labels_path=examples.labels if labels_path == "outputs/examples/test_data_labels.csv" else Path(labels_path),
+        top_k=top_k,
+    )
+    print(f"Selected features saved to: {artifacts.selected_features_path}")
+    print(f"Summary saved to: {artifacts.summary_path}")
 
-    lsvc = LinearSVC(C=0.1, penalty='l2', dual=False).fit(X, y)
-    model = SelectFromModel(lsvc, prefit=True)
-    X = model.transform(X)
 
-    selected_columns = column_names[model.get_support()]
-    print(f'Features selected by SelectFromModel: {len(selected_columns)}')
-    print(f'Features selected by SelectFromModel: {selected_columns}')
-
-    mcn_raw = pd.read_csv('./MCN.csv')
-    scn_raw = pd.read_csv('./SCN.csv')
-    pd.DataFrame(mcn_raw, columns=selected_columns).to_csv('MCN_data_select2.csv')
-    pd.DataFrame(scn_raw, columns=selected_columns).to_csv('SCN_data_select2.csv')
-
-    print(X.shape)
-    S = []
-    for _ in range(1):
-        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-        from sklearn import svm
-
-        clf = svm.SVC(probability=True, gamma='scale', kernel='linear', C=0.1, cache_size=1, max_iter=30)
-        clf.fit(x_train, y_train)
-        score = clf.score(x_test, y_test)
-        S.append(score)
-
-        predict_label = clf.predict(x_test)
-        label = y_test.to_list()
-        calculate_metric(label, predict_label)
-
-    print('Mean accuracy: %0.2f ' % (np.mean(S)))
-    print('Run time {} s'.format(time.time() - T))
+if __name__ == "__main__":
+    run_feature_selection_cli()

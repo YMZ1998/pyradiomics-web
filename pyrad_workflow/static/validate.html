@@ -20,14 +20,27 @@
           <a class="topnav-link" href="/extract">Extract</a>
           <a class="topnav-link" href="/select">Select</a>
           <a class="topnav-link" href="/train">Train</a>
+          <a class="topnav-link" href="/predict">Predict</a>
           <a class="topnav-link" href="/full">Full Run</a>
         </nav>
       </header>
 
       <section class="notice hidden" id="status-box"></section>
+      <section class="progress-card hidden" id="progress-box">
+        <div class="progress-head">
+          <strong id="progress-title">Workflow Progress</strong>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-track-shell">
+          <div class="progress-track-bar">
+            <div class="progress-fill" id="progress-bar"></div>
+          </div>
+        </div>
+        <p class="progress-detail" id="progress-detail">Waiting to start.</p>
+      </section>
 
-      <section class="desktop-grid">
-        <section class="content-column">
+      <section class="desktop-grid" data-split-id="validate-main" data-split-direction="horizontal" data-split-default="0.7">
+        <section class="content-column" data-split-id="validate-content" data-split-direction="horizontal" data-split-default="0.38" data-split-min="0.28" data-split-max="0.72">
           <article class="card">
             <div class="section-head">
               <div>
@@ -38,6 +51,9 @@
             </div>
             <form data-endpoint="/api/validate">
               <div class="form-grid">
+                <label>Task Name
+                  <input type="text" name="task_name" data-task-name>
+                </label>
                 <label>Manifest CSV
                   <input type="text" name="manifest" data-default="manifest">
                 </label>
@@ -65,7 +81,7 @@
               </div>
             </div>
             <div id="result-cards" class="metric-grid"></div>
-            <div class="result-grid">
+            <div class="result-grid" data-split-id="validate-result" data-split-direction="horizontal" data-split-default="0.48">
               <div class="subcard">
                 <h3>Stage Summary</h3>
                 <div id="result-steps" class="steps"></div>

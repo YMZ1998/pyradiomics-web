@@ -3,12 +3,14 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Any
+from typing import Callable
 
 import pandas as pd
 
 from .validation import load_manifest, validate_case
 
 LOGGER = logging.getLogger("pyrad_workflow")
+ProgressCallback = Callable[[float, str], None]
 
 
 def load_extractor(params_path: Path):
@@ -30,6 +32,7 @@ def extract_features(
     output_dir: Path,
     label_value: int = 1,
     tolerance: float = 1e-6,
+    progress_callback: ProgressCallback | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     output_dir.mkdir(parents=True, exist_ok=True)
     per_case_dir = output_dir / "per_case"
@@ -38,6 +41,8 @@ def extract_features(
     manifest = load_manifest(manifest_path)
     extractor = load_extractor(params_path)
     total_cases = len(manifest)
+    safe_total = max(total_cases, 1)
+    LOGGER.info("Extraction manifest preview: %s", manifest.head(3).to_dict(orient="records"))
 
     LOGGER.info(
         "Starting feature extraction for %s cases: manifest=%s params=%s label_value=%s tolerance=%s",
@@ -47,6 +52,8 @@ def extract_features(
         label_value,
         tolerance,
     )
+    if progress_callback is not None:
+        progress_callback(0.0, f"Preparing extraction for {total_cases} cases")
 
     rows: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
@@ -95,6 +102,8 @@ def extract_features(
         case_frame.to_csv(per_case_dir / f"{case_id}.csv", index=False)
         LOGGER.info("Case %s extracted successfully with %s fields", case_id, len(case_frame.columns))
         rows.append(normalized)
+        if progress_callback is not None:
+            progress_callback((index / safe_total) * 100.0, f"Processed case {index}/{total_cases}: {case_id}")
 
     features_frame = pd.DataFrame(rows)
     failures_frame = pd.DataFrame(failures)
@@ -105,4 +114,14 @@ def extract_features(
         len(failures_frame),
         per_case_dir,
     )
+    LOGGER.info(
+        "Feature extraction data summary: feature_rows=%s feature_columns=%s failure_rows=%s",
+        len(features_frame),
+        len(features_frame.columns) if not features_frame.empty else 0,
+        len(failures_frame),
+    )
+    if not failures_frame.empty:
+        LOGGER.info("Feature extraction failure preview: %s", failures_frame.head(5).to_dict(orient="records"))
+    if progress_callback is not None:
+        progress_callback(100.0, "Feature extraction complete")
     return features_frame, failures_frame

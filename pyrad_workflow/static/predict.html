@@ -3,24 +3,24 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Extract Features</title>
+    <title>Predict And Evaluate</title>
     <link rel="stylesheet" href="/static/dashboard.css">
   </head>
   <body>
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Workflow Step 2</p>
-          <h1 class="page-title">Extract Features</h1>
-          <p class="page-copy">Run radiomics feature extraction and review the exported results in a dedicated workspace.</p>
+          <p class="eyebrow">Workflow Step 5</p>
+          <h1 class="page-title">Predict And Evaluate</h1>
+          <p class="page-copy">Load a trained model, run inference on a feature table, and optionally evaluate against labels.</p>
         </div>
         <nav class="topnav">
           <a class="topnav-link" href="/">Home</a>
           <a class="topnav-link" href="/validate">Validate</a>
-          <a class="topnav-link is-active" href="/extract">Extract</a>
+          <a class="topnav-link" href="/extract">Extract</a>
           <a class="topnav-link" href="/select">Select</a>
           <a class="topnav-link" href="/train">Train</a>
-          <a class="topnav-link" href="/predict">Predict</a>
+          <a class="topnav-link is-active" href="/predict">Predict</a>
           <a class="topnav-link" href="/full">Full Run</a>
         </nav>
       </header>
@@ -39,38 +39,44 @@
         <p class="progress-detail" id="progress-detail">Waiting to start.</p>
       </section>
 
-      <section class="desktop-grid" data-split-id="extract-main" data-split-direction="horizontal" data-split-default="0.7">
-        <section class="content-column" data-split-id="extract-content" data-split-direction="horizontal" data-split-default="0.38" data-split-min="0.28" data-split-max="0.72">
-          <article class="card">
+      <section class="desktop-grid" data-split-id="predict-main" data-split-direction="horizontal" data-split-default="0.7">
+        <section class="content-column" data-split-id="predict-content" data-split-direction="horizontal" data-split-default="0.36" data-split-min="0.26" data-split-max="0.74">
+          <article class="card" data-visual-results="true">
             <div class="section-head">
               <div>
                 <p class="section-tag">Configuration</p>
-                <h2>Extraction Settings</h2>
+                <h2>Prediction Settings</h2>
               </div>
             </div>
-            <form data-endpoint="/api/extract">
+            <form data-endpoint="/api/predict">
               <div class="form-grid">
                 <label>Task Name
                   <input type="text" name="task_name" data-task-name>
                 </label>
-                <label>Manifest CSV
-                  <input type="text" name="manifest" data-default="manifest">
+                <label>Features CSV
+                  <input type="text" name="features" data-default="prediction_features_path" data-store-key="selected-features">
                 </label>
-                <label>Radiomics Params
-                  <input type="text" name="params" data-default="params">
+                <label>Choose Model
+                  <select id="model-select">
+                    <option value="">Loading trained models...</option>
+                  </select>
+                </label>
+                <label>Trained Model
+                  <input type="text" name="model" data-default="trained_model_path" data-store-key="trained-model">
+                </label>
+                <label>Labels CSV
+                  <input type="text" name="labels" data-default="labels">
                 </label>
                 <label>Output Directory
-                  <input type="text" name="output_dir" data-default="extraction_output_dir">
+                  <input type="text" name="output_dir" data-default="prediction_output_dir">
                 </label>
-                <label>Mask Label Value
-                  <input type="number" name="label_value" data-default="label_value">
-                </label>
-                <label>Geometry Tolerance
-                  <input type="text" name="tolerance" data-default="tolerance">
+                <label>Label Column
+                  <input type="text" name="label_column" data-default="label_column">
                 </label>
               </div>
               <div class="actions">
-                <button type="submit">Extract Features</button>
+                <button type="button" data-refresh-preview="models">Refresh Models</button>
+                <button type="submit">Run Prediction</button>
               </div>
             </form>
           </article>
@@ -79,20 +85,21 @@
             <div class="section-head">
               <div>
                 <p class="section-tag">Results</p>
-                <h2>Extraction Output</h2>
+                <h2>Prediction Output</h2>
               </div>
             </div>
             <div id="result-cards" class="metric-grid"></div>
-            <div class="result-grid" data-split-id="extract-result" data-split-direction="horizontal" data-split-default="0.48">
+            <div class="result-grid" data-split-id="predict-result" data-split-direction="horizontal" data-split-default="0.48">
               <div class="subcard">
-                <h3>Stage Summary</h3>
+                <h3>Run Summary</h3>
                 <div id="result-steps" class="steps"></div>
               </div>
               <div class="subcard">
                 <h3 id="chart-title">Visual Summary</h3>
-                <div id="result-chart" class="chart-panel empty-state">Run extraction to see the result chart.</div>
+                <div id="result-chart" class="chart-panel empty-state">Run prediction to see the result chart.</div>
               </div>
             </div>
+            <div id="result-images" class="image-gallery"></div>
             <div id="result-table" class="table-wrap hidden"></div>
             <div id="result-files" class="file-list"></div>
           </article>
@@ -103,14 +110,14 @@
             <div class="section-head">
               <div>
                 <p class="section-tag">Preview</p>
-                <h2>Dataset Inspector</h2>
-                <p class="section-copy">Review the input dataset before running extraction or when checking a failed case.</p>
+                <h2>Feature Inspector</h2>
+                <p class="section-copy">Confirm the feature table that will be fed into the trained model.</p>
               </div>
-              <button type="button" data-refresh-preview="data">Refresh</button>
+              <button type="button" data-refresh-preview="features">Refresh</button>
             </div>
-            <div id="data-preview-cards" class="metric-grid compact-grid"></div>
-            <div id="data-label-groups" class="chip-grid"></div>
-            <div id="data-preview-table" class="table-wrap hidden"></div>
+            <div id="feature-preview-cards" class="metric-grid compact-grid"></div>
+            <div id="feature-group-list" class="group-list"></div>
+            <div id="feature-preview-table" class="table-wrap hidden"></div>
           </article>
         </aside>
       </section>

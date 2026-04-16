@@ -1,9 +1,53 @@
 const STORAGE_KEYS = {
+  taskName: "pyrad.task.name",
   extractFeatures: "pyrad.extract.features",
   selectedFeatures: "pyrad.selected.features",
+  trainedModel: "pyrad.trained.model",
+  layoutPrefix: "pyrad.layout.",
+};
+
+const WORKFLOW_LABELS = {
+  validate: "Validation",
+  extract: "Extraction",
+  select: "Feature Selection",
+  train: "Model Training",
+  predict: "Prediction",
+  full: "Full Pipeline",
 };
 
 let appDefaults = {};
+
+function normalizeTaskName(value) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "default";
+  }
+  return raw.replace(/[^0-9A-Za-z._-]+/g, "-").replace(/^[.\-_]+|[.\-_]+$/g, "") || "default";
+}
+
+function getCurrentTaskName() {
+  const taskInput = document.querySelector("[data-task-name]");
+  if (taskInput && taskInput.value.trim()) {
+    return normalizeTaskName(taskInput.value);
+  }
+  const stored = window.localStorage.getItem(STORAGE_KEYS.taskName);
+  if (stored && stored.trim()) {
+    return normalizeTaskName(stored);
+  }
+  return normalizeTaskName(appDefaults.task_name || "default");
+}
+
+function taskScopedKey(baseKey) {
+  return `${baseKey}.${getCurrentTaskName()}`;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
 
 function setInputValue(input, value, force = false) {
   if (!input || value == null || value === "") {
@@ -24,7 +68,15 @@ function markFieldDirty(input) {
 function collectFormPayload(form) {
   const payload = {};
   for (const [key, value] of new FormData(form).entries()) {
-    payload[key] = value;
+    if (Object.prototype.hasOwnProperty.call(payload, key)) {
+      if (Array.isArray(payload[key])) {
+        payload[key].push(value);
+      } else {
+        payload[key] = [payload[key], value];
+      }
+    } else {
+      payload[key] = value;
+    }
   }
   return payload;
 }
@@ -58,45 +110,70 @@ function getFeatureCandidate() {
     return currentFeatureInput.value;
   }
   return (
-    window.localStorage.getItem(STORAGE_KEYS.selectedFeatures) ||
-    window.localStorage.getItem(STORAGE_KEYS.extractFeatures) ||
+    window.localStorage.getItem(taskScopedKey(STORAGE_KEYS.selectedFeatures)) ||
+    window.localStorage.getItem(taskScopedKey(STORAGE_KEYS.extractFeatures)) ||
     ""
   );
 }
 
+function getModelInput() {
+  return document.querySelector('input[name="model"]');
+}
+
+function getModelSelect() {
+  return document.getElementById("model-select");
+}
+
 function saveKnownPaths(endpoint, data) {
   const files = data.files || [];
+  const extractKey = taskScopedKey(STORAGE_KEYS.extractFeatures);
+  const selectedKey = taskScopedKey(STORAGE_KEYS.selectedFeatures);
+  const modelKey = taskScopedKey(STORAGE_KEYS.trainedModel);
   if (endpoint === "/api/extract") {
     const featuresPath = findFilePath(files, "features.csv") || pathJoin(data.output_dir, "features.csv");
     if (featuresPath) {
-      window.localStorage.setItem(STORAGE_KEYS.extractFeatures, featuresPath);
+      window.localStorage.setItem(extractKey, featuresPath);
     }
   }
   if (endpoint === "/api/select") {
     const selectedPath = findFilePath(files, "selected_features.csv") || pathJoin(data.output_dir, "selected_features.csv");
     if (selectedPath) {
-      window.localStorage.setItem(STORAGE_KEYS.selectedFeatures, selectedPath);
+      window.localStorage.setItem(selectedKey, selectedPath);
     }
   }
   if (endpoint === "/api/full") {
     const featuresPath = findFilePath(files, "features.csv");
     const selectedPath = findFilePath(files, "selected_features.csv");
     if (featuresPath) {
-      window.localStorage.setItem(STORAGE_KEYS.extractFeatures, featuresPath);
+      window.localStorage.setItem(extractKey, featuresPath);
     }
     if (selectedPath) {
-      window.localStorage.setItem(STORAGE_KEYS.selectedFeatures, selectedPath);
+      window.localStorage.setItem(selectedKey, selectedPath);
+    }
+    if (data.best_model_path) {
+      window.localStorage.setItem(modelKey, data.best_model_path);
+    }
+  }
+  if (endpoint === "/api/train" && data.best_model_path) {
+    window.localStorage.setItem(modelKey, data.best_model_path);
+  }
+  if (endpoint === "/api/predict") {
+    const modelInput = getModelInput();
+    if (modelInput && modelInput.value) {
+      window.localStorage.setItem(modelKey, modelInput.value);
     }
   }
 }
 
 async function fetchConfig() {
-  const response = await fetch("/api/config");
+  const task = getCurrentTaskName();
+  const response = await fetch(`/api/config?task=${encodeURIComponent(task)}`);
   if (!response.ok) {
     throw new Error(`Config request failed: ${response.status}`);
   }
   const payload = await response.json();
   appDefaults = payload.defaults || {};
+  window.localStorage.setItem(STORAGE_KEYS.taskName, normalizeTaskName(appDefaults.task_name || task));
 
   document.querySelectorAll("[data-default]").forEach((input) => {
     const key = input.getAttribute("data-default");
@@ -104,14 +181,29 @@ async function fetchConfig() {
     delete input.dataset.dirty;
   });
 
+  document.querySelectorAll("[data-task-name]").forEach((input) => {
+    setInputValue(input, appDefaults.task_name || task, true);
+    delete input.dataset.dirty;
+  });
+
   document.querySelectorAll("[data-store-key]").forEach((input) => {
     const storageKey = input.getAttribute("data-store-key");
     if (storageKey === "extract-features") {
-      setInputValue(input, window.localStorage.getItem(STORAGE_KEYS.extractFeatures), false);
+      setInputValue(input, window.localStorage.getItem(taskScopedKey(STORAGE_KEYS.extractFeatures)), false);
     }
     if (storageKey === "selected-features") {
-      setInputValue(input, window.localStorage.getItem(STORAGE_KEYS.selectedFeatures), false);
+      setInputValue(input, window.localStorage.getItem(taskScopedKey(STORAGE_KEYS.selectedFeatures)), false);
     }
+    if (storageKey === "trained-model") {
+      setInputValue(input, window.localStorage.getItem(taskScopedKey(STORAGE_KEYS.trainedModel)), false);
+    }
+  });
+
+  document.querySelectorAll('input[type="checkbox"][data-default-list]').forEach((input) => {
+    const key = input.getAttribute("data-default-list");
+    const values = Array.isArray(appDefaults[key]) ? appDefaults[key] : [];
+    input.checked = values.includes(input.value);
+    delete input.dataset.dirty;
   });
 }
 
@@ -123,6 +215,43 @@ function setStatus(kind, title, message) {
   box.classList.remove("hidden", "notice-success", "notice-error");
   box.classList.add(kind === "error" ? "notice-error" : "notice-success");
   box.innerHTML = `<strong>${title}</strong><p>${message}</p>`;
+}
+
+function clearStatus() {
+  const box = document.getElementById("status-box");
+  if (!box) {
+    return;
+  }
+  box.classList.add("hidden");
+  box.innerHTML = "";
+}
+
+function setProgressVisible(visible) {
+  const box = document.getElementById("progress-box");
+  if (!box) {
+    return;
+  }
+  box.classList.toggle("hidden", !visible);
+}
+
+function updateProgress(title, percent, detail) {
+  const titleNode = document.getElementById("progress-title");
+  const percentNode = document.getElementById("progress-percent");
+  const bar = document.getElementById("progress-bar");
+  const detailNode = document.getElementById("progress-detail");
+  if (!titleNode || !percentNode || !bar || !detailNode) {
+    return;
+  }
+
+  const normalized = clamp(Number(percent) || 0, 0, 100);
+  titleNode.textContent = title;
+  percentNode.textContent = `${Math.round(normalized)}%`;
+  bar.style.width = `${normalized}%`;
+  detailNode.textContent = detail || "Running...";
+}
+
+function workflowTitle(workflow) {
+  return WORKFLOW_LABELS[workflow] || workflow;
 }
 
 function createMetricCard(card) {
@@ -225,8 +354,9 @@ function renderTable(container, rows) {
   if (!container) {
     return;
   }
+  const visualOnly = Boolean(container.closest("[data-visual-results='true']"));
   container.innerHTML = "";
-  if (!rows || rows.length === 0) {
+  if (visualOnly || !rows || rows.length === 0) {
     container.classList.add("hidden");
     return;
   }
@@ -249,12 +379,180 @@ function renderFiles(files) {
   });
 }
 
+function renderImages(files) {
+  const container = document.getElementById("result-images");
+  if (!container) {
+    return;
+  }
+  container.innerHTML = "";
+
+  const imageFiles = (files || [])
+    .filter((file) => /\.(png|jpg|jpeg|svg)$/i.test(file.name || ""))
+    .sort((a, b) => {
+      const score = (name) => {
+        if (/roc/i.test(name)) return 0;
+        if (/confusion/i.test(name)) return 1;
+        return 2;
+      };
+      return score(a.name || "") - score(b.name || "");
+    });
+  if (imageFiles.length === 0) {
+    return;
+  }
+
+  imageFiles.forEach((file) => {
+    const panel = document.createElement("div");
+    panel.className = "image-panel";
+
+    const title = document.createElement("strong");
+    title.textContent = humanizeImageName(file.name || file.display_path || "Image");
+
+    const caption = document.createElement("span");
+    caption.textContent = file.display_path || file.name || "";
+
+    const image = document.createElement("img");
+    image.src = `/download?path=${encodeURIComponent(file.path)}`;
+    image.alt = file.name || "result image";
+
+    panel.appendChild(title);
+    panel.appendChild(caption);
+    panel.appendChild(image);
+    container.appendChild(panel);
+  });
+}
+
+function humanizeImageName(name) {
+  const cleaned = String(name)
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned
+    .split(" ")
+    .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
+
+function renderSelectedFeatures(features) {
+  const container = document.getElementById("selected-feature-list");
+  if (!container) {
+    return;
+  }
+  container.innerHTML = "";
+  if (!features || features.length === 0) {
+    container.innerHTML = '<span class="soft-empty">Run feature selection to view the final feature set.</span>';
+    return;
+  }
+  features.forEach((featureName) => {
+    const chip = document.createElement("span");
+    chip.className = "group-feature-chip";
+    chip.textContent = featureName;
+    container.appendChild(chip);
+  });
+}
+
+function renderModelOptions(models) {
+  const select = getModelSelect();
+  const modelInput = getModelInput();
+  if (!select) {
+    return;
+  }
+
+  const currentValue = modelInput && modelInput.value ? modelInput.value : window.localStorage.getItem(STORAGE_KEYS.trainedModel) || "";
+  const scopedCurrentValue = currentValue || window.localStorage.getItem(taskScopedKey(STORAGE_KEYS.trainedModel)) || "";
+  select.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = models && models.length > 0 ? "Select a trained model" : "No trained models found";
+  select.appendChild(placeholder);
+
+  (models || []).forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item.path;
+    option.textContent = `${item.label} - ${item.display_path || item.path}`;
+    if (item.path === scopedCurrentValue) {
+      option.selected = true;
+    }
+    select.appendChild(option);
+  });
+
+  if (!select.value && scopedCurrentValue) {
+    const custom = document.createElement("option");
+    custom.value = scopedCurrentValue;
+    custom.textContent = `Current: ${scopedCurrentValue}`;
+    custom.selected = true;
+    select.appendChild(custom);
+  }
+}
+
 function renderMainResult(data) {
   renderCardsInto(document.getElementById("result-cards"), getNested(data, ["insights", "cards"], []));
   renderSteps(document.getElementById("result-steps"), getNested(data, ["insights", "stage_view", "items"], data.steps || []));
   renderChart(getNested(data, ["insights", "bar_chart"], null));
+  renderImages(data.files || []);
   renderTable(document.getElementById("result-table"), data.table || []);
   renderFiles(data.files || []);
+  renderSelectedFeatures(data.selected_features || []);
+}
+
+function endpointToWorkflow(endpoint) {
+  return String(endpoint || "").split("/").filter(Boolean).pop() || "";
+}
+
+async function submitWorkflow(endpoint, payload) {
+  const workflow = endpointToWorkflow(endpoint);
+  const asyncEndpoint = `/api/v1/workflows/${workflow}`;
+  const response = await fetch(asyncEndpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...payload, run_async: true }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || `Request failed: ${response.status}`);
+  }
+
+  if (data.result) {
+    updateProgress(workflowTitle(workflow), 100, "Completed");
+    return data.result;
+  }
+
+  if (!data.job || !data.job.job_id) {
+    throw new Error("Job information missing from server response.");
+  }
+
+  updateProgress(
+    workflowTitle(workflow),
+    Number(data.job.progress) || 0,
+    data.job.detail || "Queued",
+  );
+  return pollJob(data.job.job_id, workflow);
+}
+
+async function pollJob(jobId, workflow) {
+  for (;;) {
+    await delay(700);
+    const response = await fetch(`/api/v1/jobs/${jobId}`);
+    const data = await response.json();
+    if (!response.ok || !data.ok || !data.job) {
+      throw new Error(data.error || `Job polling failed: ${response.status}`);
+    }
+
+    const job = data.job;
+    updateProgress(
+      workflowTitle(workflow),
+      Number(job.progress) || 0,
+      job.detail || job.status || "Running",
+    );
+
+    if (job.status === "completed") {
+      return job.result || {};
+    }
+    if (job.status === "failed") {
+      throw new Error(job.error || job.detail || "Workflow execution failed");
+    }
+  }
 }
 
 async function submitForm(form) {
@@ -266,24 +564,21 @@ async function submitForm(form) {
     button.textContent = "Running...";
   }
 
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(collectFormPayload(form)),
-    });
-    const data = await response.json();
-    if (!response.ok || !data.ok) {
-      throw new Error(data.error || "Request failed");
-    }
+  clearStatus();
+  setProgressVisible(true);
+  updateProgress(workflowTitle(endpointToWorkflow(endpoint)), 0, "Submitting job");
 
+  try {
+    const data = await submitWorkflow(endpoint, collectFormPayload(form));
     saveKnownPaths(endpoint, data);
+    updateProgress(workflowTitle(endpointToWorkflow(endpoint)), 100, data.summary || "Completed");
     setStatus("success", data.title, data.summary);
     renderMainResult(data);
     await loadDataPreview().catch(() => {});
     await loadFeaturePreview().catch(() => {});
   } catch (error) {
     setStatus("error", "Execution failed", error.message || String(error));
+    updateProgress(workflowTitle(endpointToWorkflow(endpoint)), 100, error.message || String(error));
     renderMainResult({ files: [], table: [], steps: [], insights: {} });
   } finally {
     if (button) {
@@ -329,13 +624,58 @@ async function loadDataPreview() {
   (data.label_groups || []).forEach((row) => {
     const chip = document.createElement("div");
     chip.className = "group-chip";
-    chip.innerHTML = `<strong>${row.label}</strong><span>${row.count}</span>`;
+    const label = document.createElement("strong");
+    label.textContent = `Label ${row.label}`;
+
+    const count = document.createElement("span");
+    count.textContent = `${row.count} cases`;
+
+    chip.appendChild(label);
+    chip.appendChild(count);
     labelGroups.appendChild(chip);
   });
   if ((data.label_groups || []).length === 0) {
     labelGroups.innerHTML = '<div class="soft-empty">No label grouping information available.</div>';
   }
   renderTable(table, data.rows || []);
+}
+
+function renderFeatureGroups(container, groups) {
+  container.innerHTML = "";
+  (groups || []).forEach((row) => {
+    const item = document.createElement("details");
+    item.className = "group-row group-accordion";
+
+    const summary = document.createElement("summary");
+    const left = document.createElement("div");
+    left.className = "group-summary";
+
+    const title = document.createElement("strong");
+    title.textContent = row.group;
+    const desc = document.createElement("p");
+    desc.textContent = row.examples || "";
+    left.appendChild(title);
+    left.appendChild(desc);
+
+    const count = document.createElement("span");
+    count.className = "group-count";
+    count.textContent = `${row.count}`;
+
+    summary.appendChild(left);
+    summary.appendChild(count);
+    item.appendChild(summary);
+
+    const featureList = document.createElement("div");
+    featureList.className = "group-feature-list";
+    (row.features || []).forEach((featureName) => {
+      const chip = document.createElement("span");
+      chip.className = "group-feature-chip";
+      chip.textContent = featureName;
+      featureList.appendChild(chip);
+    });
+    item.appendChild(featureList);
+    container.appendChild(item);
+  });
 }
 
 async function loadFeaturePreview() {
@@ -365,23 +705,30 @@ async function loadFeaturePreview() {
   }
 
   renderCardsInto(cards, data.cards || []);
-  groupList.innerHTML = "";
-  (data.group_rows || []).slice(0, 16).forEach((row) => {
-    const item = document.createElement("div");
-    item.className = "group-row";
-    item.innerHTML = `
-      <div>
-        <strong>${row.group}</strong>
-        <p>${row.examples || ""}</p>
-      </div>
-      <span>${row.count}</span>
-    `;
-    groupList.appendChild(item);
-  });
   if ((data.group_rows || []).length === 0) {
     groupList.innerHTML = '<div class="soft-empty">No feature grouping information available.</div>';
+  } else {
+    renderFeatureGroups(groupList, data.group_rows || []);
   }
   renderTable(table, data.feature_rows || []);
+}
+
+async function loadModelOptions() {
+  const select = getModelSelect();
+  if (!select) {
+    return;
+  }
+
+  const response = await fetch("/api/inspect/models", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task_name: getCurrentTaskName() }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || "Failed to load trained models");
+  }
+  renderModelOptions(data.models || []);
 }
 
 function bindPreviewRefresh() {
@@ -395,6 +742,9 @@ function bindPreviewRefresh() {
         if (preview === "features") {
           await loadFeaturePreview();
         }
+        if (preview === "models") {
+          await loadModelOptions();
+        }
       } catch (error) {
         setStatus("error", "Preview Failed", error.message || String(error));
       }
@@ -405,6 +755,7 @@ function bindPreviewRefresh() {
 function bindInputTracking() {
   document.querySelectorAll("input").forEach((input) => {
     input.addEventListener("input", () => markFieldDirty(input));
+    input.addEventListener("change", () => markFieldDirty(input));
   });
 }
 
@@ -419,6 +770,105 @@ function bindMainForm() {
   });
 }
 
+function bindModelSelect() {
+  const select = getModelSelect();
+  const modelInput = getModelInput();
+  if (!select || !modelInput) {
+    return;
+  }
+  select.addEventListener("change", () => {
+    if (select.value) {
+      modelInput.value = select.value;
+      markFieldDirty(modelInput);
+      window.localStorage.setItem(taskScopedKey(STORAGE_KEYS.trainedModel), select.value);
+    }
+  });
+}
+
+function bindTaskInputs() {
+  document.querySelectorAll("[data-task-name]").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const normalized = normalizeTaskName(input.value);
+      input.value = normalized;
+      window.localStorage.setItem(STORAGE_KEYS.taskName, normalized);
+      clearStatus();
+      await fetchConfig();
+      await loadDataPreview().catch(() => {});
+      await loadFeaturePreview().catch(() => {});
+      await loadModelOptions().catch(() => {});
+    });
+  });
+}
+
+function setupResizableSplit(container) {
+  if (!container || container.dataset.splitReady === "true") {
+    return;
+  }
+
+  const panes = Array.from(container.children).filter((node) => node.nodeType === Node.ELEMENT_NODE);
+  if (panes.length !== 2) {
+    return;
+  }
+
+  const direction = container.dataset.splitDirection || "horizontal";
+  const minRatio = Number(container.dataset.splitMin) || 0.2;
+  const maxRatio = Number(container.dataset.splitMax) || 0.8;
+  const defaultRatio = clamp(Number(container.dataset.splitDefault) || 0.5, minRatio, maxRatio);
+  const storageKey = `${STORAGE_KEYS.layoutPrefix}${container.dataset.splitId || container.className}`;
+  const persistedRatio = clamp(Number(window.localStorage.getItem(storageKey)) || defaultRatio, minRatio, maxRatio);
+
+  const splitter = document.createElement("div");
+  splitter.className = `splitter splitter-${direction}`;
+  splitter.setAttribute("role", "separator");
+  splitter.setAttribute("tabindex", "0");
+
+  container.insertBefore(splitter, panes[1]);
+  container.classList.add("is-resizable");
+  container.dataset.splitReady = "true";
+
+  const applyRatio = (ratio) => {
+    const safeRatio = clamp(ratio, minRatio, maxRatio);
+    container.style.setProperty("--split-ratio", String(safeRatio));
+    container.style.setProperty("--split-inverse", String(1 - safeRatio));
+    window.localStorage.setItem(storageKey, String(safeRatio));
+  };
+
+  applyRatio(persistedRatio);
+
+  splitter.addEventListener("pointerdown", (event) => {
+    if (window.innerWidth <= 1180) {
+      return;
+    }
+
+    const rect = container.getBoundingClientRect();
+    const pointerId = event.pointerId;
+    splitter.setPointerCapture(pointerId);
+
+    const handleMove = (moveEvent) => {
+      const nextRatio = direction === "horizontal"
+        ? (moveEvent.clientX - rect.left) / rect.width
+        : (moveEvent.clientY - rect.top) / rect.height;
+      applyRatio(nextRatio);
+    };
+
+    const handleUp = () => {
+      splitter.removeEventListener("pointermove", handleMove);
+      splitter.removeEventListener("pointerup", handleUp);
+      splitter.removeEventListener("pointercancel", handleUp);
+      splitter.releasePointerCapture(pointerId);
+    };
+
+    splitter.addEventListener("pointermove", handleMove);
+    splitter.addEventListener("pointerup", handleUp);
+    splitter.addEventListener("pointercancel", handleUp);
+    event.preventDefault();
+  });
+}
+
+function initializeResizableSplits() {
+  document.querySelectorAll("[data-split-id]").forEach((container) => setupResizableSplit(container));
+}
+
 window.addEventListener("error", (event) => {
   setStatus("error", "Frontend Error", event.message || "Unknown browser error");
 });
@@ -430,12 +880,17 @@ window.addEventListener("unhandledrejection", (event) => {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
+    initializeResizableSplits();
     await fetchConfig();
     bindInputTracking();
     bindMainForm();
+    bindModelSelect();
+    bindTaskInputs();
     bindPreviewRefresh();
+    setProgressVisible(false);
     await loadDataPreview().catch(() => {});
     await loadFeaturePreview().catch(() => {});
+    await loadModelOptions().catch(() => {});
   } catch (error) {
     setStatus("error", "Initialization Failed", error.message || String(error));
   }

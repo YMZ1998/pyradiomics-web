@@ -22,6 +22,8 @@ class JobRecord:
     result: dict[str, Any] | None
     error: str | None
     cache_key: str | None
+    progress: float
+    detail: str | None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -45,6 +47,8 @@ class InMemoryJobStore:
             result=None,
             error=None,
             cache_key=cache_key,
+            progress=0.0,
+            detail="Queued",
         )
         with self._lock:
             self._jobs[job.job_id] = job
@@ -56,6 +60,8 @@ class InMemoryJobStore:
         status: str,
         result: dict[str, Any] | None = None,
         error: str | None = None,
+        progress: float | None = None,
+        detail: str | None = None,
     ) -> None:
         with self._lock:
             current = self._jobs[job_id]
@@ -69,7 +75,12 @@ class InMemoryJobStore:
                 result=result,
                 error=error,
                 cache_key=current.cache_key,
+                progress=current.progress if progress is None else progress,
+                detail=current.detail if detail is None else detail,
             )
+
+    def update_progress(self, job_id: str, progress: float, detail: str | None = None) -> None:
+        self.update_status(job_id, "running", progress=progress, detail=detail)
 
     def get_job(self, job_id: str) -> JobRecord | None:
         with self._lock:

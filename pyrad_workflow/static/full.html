@@ -20,15 +20,28 @@
           <a class="topnav-link" href="/extract">Extract</a>
           <a class="topnav-link" href="/select">Select</a>
           <a class="topnav-link" href="/train">Train</a>
+          <a class="topnav-link" href="/predict">Predict</a>
           <a class="topnav-link is-active" href="/full">Full Run</a>
         </nav>
       </header>
 
       <section class="notice hidden" id="status-box"></section>
+      <section class="progress-card hidden" id="progress-box">
+        <div class="progress-head">
+          <strong id="progress-title">Workflow Progress</strong>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-track-shell">
+          <div class="progress-track-bar">
+            <div class="progress-fill" id="progress-bar"></div>
+          </div>
+        </div>
+        <p class="progress-detail" id="progress-detail">Waiting to start.</p>
+      </section>
 
-      <section class="desktop-grid">
-        <section class="content-column">
-          <article class="card">
+      <section class="desktop-grid" data-split-id="full-main" data-split-direction="horizontal" data-split-default="0.7">
+        <section class="content-column" data-split-id="full-content" data-split-direction="horizontal" data-split-default="0.36" data-split-min="0.26" data-split-max="0.74">
+          <article class="card" data-visual-results="true">
             <div class="section-head">
               <div>
                 <p class="section-tag">Configuration</p>
@@ -37,6 +50,9 @@
             </div>
             <form data-endpoint="/api/full">
               <div class="form-grid">
+                <label>Task Name
+                  <input type="text" name="task_name" data-task-name>
+                </label>
                 <label>Manifest CSV
                   <input type="text" name="manifest" data-default="manifest">
                 </label>
@@ -64,6 +80,14 @@
                 <label>Correlation Threshold
                   <input type="text" name="correlation_threshold" data-default="correlation_threshold">
                 </label>
+                <label>Selection Method
+                  <select name="selection_method" data-default="selection_method">
+                    <option value="anova_top_k">ANOVA Top-K</option>
+                    <option value="mutual_info_top_k">Mutual Information Top-K</option>
+                    <option value="lasso">L1 Logistic Selection</option>
+                    <option value="correlation_only">Correlation Only</option>
+                  </select>
+                </label>
                 <label>Top K Features
                   <input type="number" name="top_k" data-default="top_k">
                 </label>
@@ -73,6 +97,16 @@
                 <label>Random State
                   <input type="number" name="random_state" data-default="random_state">
                 </label>
+              </div>
+              <div class="model-picker">
+                <span class="model-picker-title">Models</span>
+                <div class="model-option-grid">
+                  <label class="check-card"><input type="checkbox" name="models" value="logistic_regression" data-default-list="default_train_models"> Logistic Regression</label>
+                  <label class="check-card"><input type="checkbox" name="models" value="random_forest" data-default-list="default_train_models"> Random Forest</label>
+                  <label class="check-card"><input type="checkbox" name="models" value="svm" data-default-list="default_train_models"> Support Vector Machine</label>
+                  <label class="check-card"><input type="checkbox" name="models" value="knn" data-default-list="default_train_models"> K-Nearest Neighbors</label>
+                  <label class="check-card"><input type="checkbox" name="models" value="naive_bayes" data-default-list="default_train_models"> Naive Bayes</label>
+                </div>
               </div>
               <div class="actions">
                 <button type="submit">Run Full Pipeline</button>
@@ -88,7 +122,7 @@
               </div>
             </div>
             <div id="result-cards" class="metric-grid"></div>
-            <div class="result-grid">
+            <div class="result-grid" data-split-id="full-result" data-split-direction="horizontal" data-split-default="0.48">
               <div class="subcard">
                 <h3>Stage Summary</h3>
                 <div id="result-steps" class="steps"></div>
@@ -98,6 +132,7 @@
                 <div id="result-chart" class="chart-panel empty-state">Run the full pipeline to see the overview chart.</div>
               </div>
             </div>
+            <div id="result-images" class="image-gallery"></div>
             <div id="result-table" class="table-wrap hidden"></div>
             <div id="result-files" class="file-list"></div>
           </article>

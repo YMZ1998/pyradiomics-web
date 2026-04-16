@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+import shutil
 
 
 def timestamp_token() -> str:
@@ -23,6 +24,18 @@ def ensure_output_dir(workspace: Path, provided: str | None, default_leaf: str) 
         chosen = workspace / "outputs" / default_leaf
     chosen.mkdir(parents=True, exist_ok=True)
     return chosen.resolve()
+
+
+def clear_output_dir(output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for child in output_dir.iterdir():
+        if child.is_dir():
+            shutil.rmtree(child, ignore_errors=True)
+        else:
+            try:
+                child.unlink()
+            except FileNotFoundError:
+                continue
 
 
 def display_path(path: Path, workspace: Path) -> str:

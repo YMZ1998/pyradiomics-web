@@ -20,14 +20,27 @@
           <a class="topnav-link" href="/extract">Extract</a>
           <a class="topnav-link is-active" href="/select">Select</a>
           <a class="topnav-link" href="/train">Train</a>
+          <a class="topnav-link" href="/predict">Predict</a>
           <a class="topnav-link" href="/full">Full Run</a>
         </nav>
       </header>
 
       <section class="notice hidden" id="status-box"></section>
+      <section class="progress-card hidden" id="progress-box">
+        <div class="progress-head">
+          <strong id="progress-title">Workflow Progress</strong>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-track-shell">
+          <div class="progress-track-bar">
+            <div class="progress-fill" id="progress-bar"></div>
+          </div>
+        </div>
+        <p class="progress-detail" id="progress-detail">Waiting to start.</p>
+      </section>
 
-      <section class="desktop-grid">
-        <section class="content-column">
+      <section class="desktop-grid" data-split-id="select-main" data-split-direction="horizontal" data-split-default="0.7">
+        <section class="content-column" data-split-id="select-content" data-split-direction="horizontal" data-split-default="0.36" data-split-min="0.26" data-split-max="0.74">
           <article class="card">
             <div class="section-head">
               <div>
@@ -37,6 +50,9 @@
             </div>
             <form data-endpoint="/api/select">
               <div class="form-grid">
+                <label>Task Name
+                  <input type="text" name="task_name" data-task-name>
+                </label>
                 <label>Features CSV
                   <input type="text" name="features" data-default="extraction_features_path" data-store-key="extract-features">
                 </label>
@@ -54,6 +70,14 @@
                 </label>
                 <label>Correlation Threshold
                   <input type="text" name="correlation_threshold" data-default="correlation_threshold">
+                </label>
+                <label>Selection Method
+                  <select name="selection_method" data-default="selection_method">
+                    <option value="anova_top_k">ANOVA Top-K</option>
+                    <option value="mutual_info_top_k">Mutual Information Top-K</option>
+                    <option value="lasso">L1 Logistic Selection</option>
+                    <option value="correlation_only">Correlation Only</option>
+                  </select>
                 </label>
                 <label>Top K Features
                   <input type="number" name="top_k" data-default="top_k">
@@ -73,7 +97,7 @@
               </div>
             </div>
             <div id="result-cards" class="metric-grid"></div>
-            <div class="result-grid">
+            <div class="result-grid" data-split-id="select-result" data-split-direction="horizontal" data-split-default="0.48">
               <div class="subcard">
                 <h3>Stage Summary</h3>
                 <div id="result-steps" class="steps"></div>
@@ -81,6 +105,12 @@
               <div class="subcard">
                 <h3 id="chart-title">Visual Summary</h3>
                 <div id="result-chart" class="chart-panel empty-state">Run selection to see the result chart.</div>
+              </div>
+            </div>
+            <div class="subcard selected-feature-panel">
+              <h3>Selected Features</h3>
+              <div id="selected-feature-list" class="group-feature-list feature-result-list">
+                <span class="soft-empty">Run feature selection to view the final feature set.</span>
               </div>
             </div>
             <div id="result-table" class="table-wrap hidden"></div>
