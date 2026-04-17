@@ -112,6 +112,14 @@ class PredictionArtifacts:
     model_name: str
 
 
+@dataclass(frozen=True)
+class ShapArtifacts:
+    summary_plot_path: Path | None
+    waterfall_plot_path: Path | None
+    importance_csv_path: Path | None
+    top_feature_names: list[str]
+
+
 def load_labels(labels_path: Path) -> pd.DataFrame:
     LOGGER.info("Loading labels file: %s", labels_path)
     labels = pd.read_csv(labels_path)
@@ -487,6 +495,22 @@ def load_model_bundle(model_path: Path) -> dict[str, object]:
         return pickle.load(handle)
 
 
+def transformed_feature_names(pipeline: Pipeline, original_columns: list[str]) -> list[str]:
+    names = list(original_columns)
+    for step_name, step in pipeline.steps[:-1]:
+        _ = step_name
+        if hasattr(step, "selected_columns_"):
+            names = list(step.selected_columns_)
+    return names
+
+
+def transform_feature_frame(pipeline: Pipeline, features: pd.DataFrame) -> pd.DataFrame:
+    preprocess = pipeline[:-1]
+    transformed = preprocess.transform(features)
+    names = transformed_feature_names(pipeline, features.columns.tolist())
+    return pd.DataFrame(transformed, columns=names, index=features.index)
+
+
 def _plot_confusion_matrix_image(matrix_frame: pd.DataFrame, output_path: Path, title: str) -> Path:
     figure, axis = plt.subplots(figsize=(6.5, 5.2))
     sns.heatmap(matrix_frame, annot=True, fmt="g", cmap="Blues", cbar=False, ax=axis, linewidths=0.5)
@@ -563,6 +587,93 @@ def _plot_roc_curve_image(
     figure.savefig(output_path, dpi=180, bbox_inches="tight")
     plt.close(figure)
     return output_path
+
+
+def run_shap_analysis(
+    fitted_pipeline: Pipeline,
+    feature_frame: pd.DataFrame,
+    output_dir: Path,
+    title_prefix: str,
+    max_background: int = 30,
+    max_explain: int = 80,
+) -> ShapArtifacts:
+    try:
+        import shap
+    except Exception as exc:
+        LOGGER.warning("SHAP is unavailable, skipping explanation analysis: %s", exc)
+        return ShapArtifacts(None, None, None, [])
+
+    if feature_frame.empty:
+        return ShapArtifacts(None, None, None, [])
+
+    transformed_frame = transform_feature_frame(fitted_pipeline, feature_frame)
+    estimator = fitted_pipeline.steps[-1][1]
+    background = transformed_frame.iloc[: min(max_background, len(transformed_frame))].copy()
+    explain_frame = transformed_frame.iloc[: min(max_explain, len(transformed_frame))].copy()
+    required_max_evals = max(2 * transformed_frame.shape[1] + 1, 500)
+
+    try:
+        if isinstance(estimator, RandomForestClassifier):
+            explainer = shap.TreeExplainer(estimator)
+            explanation = explainer(explain_frame)
+        elif isinstance(estimator, LogisticRegression):
+            explainer = shap.LinearExplainer(estimator, background, feature_perturbation="interventional")
+            explanation = explainer(explain_frame)
+        else:
+            predict_fn = estimator.predict_proba if hasattr(estimator, "predict_proba") else estimator.predict
+            explainer = shap.Explainer(predict_fn, background)
+            explanation = explainer(explain_frame, max_evals=required_max_evals)
+    except Exception as exc:
+        LOGGER.warning("Unable to compute SHAP explanation, skipping: %s", exc)
+        return ShapArtifacts(None, None, None, [])
+
+    values = np.asarray(explanation.values)
+    base_values = np.asarray(explanation.base_values)
+    if values.ndim == 3:
+        values = values[:, :, -1]
+        if base_values.ndim > 1:
+            base_values = base_values[:, -1]
+
+    mean_abs = np.mean(np.abs(values), axis=0)
+    ranking = (
+        pd.DataFrame({"feature": explain_frame.columns, "mean_abs_shap": mean_abs})
+        .sort_values(by="mean_abs_shap", ascending=False)
+        .reset_index(drop=True)
+    )
+    top_feature_names = ranking.head(15)["feature"].tolist()
+
+    importance_csv_path = output_dir / f"{title_prefix}_shap_importance.csv"
+    ranking.to_csv(importance_csv_path, index=False)
+
+    summary_plot_path = output_dir / f"{title_prefix}_shap_summary.png"
+    figure, axis = plt.subplots(figsize=(8, max(4.5, min(10, len(top_feature_names) * 0.45 + 1.5))))
+    top_rows = ranking.head(15).iloc[::-1]
+    axis.barh(top_rows["feature"], top_rows["mean_abs_shap"], color="#1f5f95")
+    axis.set_xlabel("Mean |SHAP value|")
+    axis.set_title(f"{title_prefix.replace('_', ' ').title()} SHAP Importance")
+    figure.tight_layout()
+    figure.savefig(summary_plot_path, dpi=180, bbox_inches="tight")
+    plt.close(figure)
+
+    waterfall_plot_path = output_dir / f"{title_prefix}_shap_waterfall.png"
+    try:
+        single_base = base_values[0] if np.ndim(base_values) else base_values
+        single_explanation = shap.Explanation(
+            values=np.asarray(values[0], dtype=float),
+            base_values=float(np.asarray(single_base).reshape(-1)[0]),
+            data=np.asarray(explain_frame.iloc[0].to_numpy(), dtype=float),
+            feature_names=[str(name) for name in explain_frame.columns],
+        )
+        plt.figure(figsize=(8, 6))
+        shap.plots.waterfall(single_explanation, max_display=12, show=False)
+        plt.tight_layout()
+        plt.savefig(waterfall_plot_path, dpi=180, bbox_inches="tight")
+        plt.close()
+    except Exception as exc:
+        LOGGER.warning("Unable to render SHAP waterfall plot: %s", exc)
+        waterfall_plot_path = None
+
+    return ShapArtifacts(summary_plot_path, waterfall_plot_path, importance_csv_path, top_feature_names)
 
 
 def collect_cv_roc_data(
@@ -891,6 +1002,14 @@ def train_and_evaluate(
             len(metrics_frame),
         )
         LOGGER.info("Training metrics preview: %s", metrics_frame.to_dict(orient="records"))
+        best_model_path = Path(str(best_model["model_path"]))
+        best_bundle = load_model_bundle(best_model_path)
+        run_shap_analysis(
+            best_bundle["pipeline"],
+            prepared.features,
+            output_dir,
+            title_prefix=f"best_model_{best_model['model']}",
+        )
     emit_progress(progress_callback, 100, "Model training complete")
     return metrics_frame
 
@@ -970,6 +1089,13 @@ def predict_and_evaluate(
             roc_curve_path,
             f"{bundle.get('model_label', model_name)} Prediction ROC Curve",
         )
+
+    run_shap_analysis(
+        pipeline,
+        feature_frame=x,
+        output_dir=output_dir,
+        title_prefix=f"prediction_{model_name}",
+    )
 
     emit_progress(progress_callback, 100, "Prediction complete")
     return PredictionArtifacts(

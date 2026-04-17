@@ -36,7 +36,7 @@ from ..infrastructure.settings import AppSettings
 
 WORKFLOW_NAMES = {"validate", "extract", "select", "train", "predict", "full"}
 LOGGER = logging.getLogger("pyrad_workflow")
-WORKFLOW_CACHE_VERSION = "2026-04-16-roc-images-2"
+WORKFLOW_CACHE_VERSION = "2026-04-17-shap-images-2"
 
 
 class ClinicalRadiomicsPlatformService:
